@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Monochrome black & white design system */
+    --background: 0 0% 6%;
+    --foreground: 0 0% 96%;
+
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 96%;
+
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 96%;
+
+    --primary: 0 0% 92%;
+    --primary-foreground: 0 0% 8%;
+    --primary-glow: 0 0% 80%;
+
+    --secondary: 0 0% 13%;
+    --secondary-foreground: 0 0% 96%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 58%;
+
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 96%;
+
+    --destructive: 0 0% 70%;
+    --destructive-foreground: 0 0% 8%;
+
+    --success: 0 0% 80%;
+    --success-foreground: 0 0% 8%;
+    --warning: 0 0% 65%;
+    --warning-foreground: 0 0% 8%;
+    --info: 0 0% 70%;
+    --info-foreground: 0 0% 8%;
+
+    --border: 0 0% 16%;
+    --input: 0 0% 14%;
+    --ring: 0 0% 60%;
+
+    --radius: 0.625rem;
+
+    /* Statuses — shades of gray */
+    --status-planned: 0 0% 50%;
+    --status-progress: 0 0% 80%;
+    --status-risk: 0 0% 65%;
+    --status-blocked: 0 0% 40%;
+    --status-completed: 0 0% 92%;
+
+    /* Priorities — gray scale */
+    --priority-low: 0 0% 45%;
+    --priority-medium: 0 0% 60%;
+    --priority-high: 0 0% 78%;
+    --priority-critical: 0 0% 95%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(0 0% 22%), hsl(0 0% 14%));
+    --gradient-surface: linear-gradient(180deg, hsl(0 0% 10%), hsl(0 0% 7%));
+    --shadow-elegant: 0 10px 40px -10px hsl(0 0% 0% / 0.6);
+    --shadow-card: 0 1px 0 0 hsl(0 0% 18% / 0.6), 0 4px 16px -4px hsl(0 0% 0% / 0.4);
+
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 70%;
+    --sidebar-primary: 0 0% 92%;
+    --sidebar-primary-foreground: 0 0% 8%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 0 0% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 8px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+}
