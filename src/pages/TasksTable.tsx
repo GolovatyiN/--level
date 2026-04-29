@@ -6,11 +6,12 @@ import { useDirections } from "@/hooks/useDirections";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TaskDialog } from "@/components/TaskDialog";
 import { StatusBadge, PriorityBadge } from "@/components/StatusBadge";
+import { Spinner } from "@/components/UiState";
 import { ExternalLink } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 export default function TasksTable() {
-  const { data: tasks = [] } = useTasks();
+  const { data: tasks = [], isLoading } = useTasks();
   const { data: directions = [] } = useDirections();
   const [filters, setFilters] = useState<FiltersState>(initialFilters);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -22,7 +23,7 @@ export default function TasksTable() {
     <>
       <PageHeader title="Таблица задач" description="Все задачи в одном представлении" />
       <TaskFilters value={filters} onChange={setFilters} />
-      <div className="overflow-auto p-8 scrollbar-thin">
+      <div className="overflow-auto p-4 scrollbar-thin sm:p-8">
         <div className="rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
@@ -73,7 +74,15 @@ export default function TasksTable() {
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-12 text-center text-muted-foreground">Задач не найдено</TableCell>
+                  <TableCell colSpan={9} className="py-12 text-center text-muted-foreground">
+                    {isLoading && tasks.length === 0 ? (
+                      <span className="inline-flex items-center gap-2"><Spinner /> Загрузка...</span>
+                    ) : tasks.length === 0 ? (
+                      "Задач ещё нет — создайте первую через кнопку «Новая задача»."
+                    ) : (
+                      "Задач под выбранные фильтры не найдено."
+                    )}
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>

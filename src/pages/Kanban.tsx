@@ -8,6 +8,7 @@ import { useDirections } from "@/hooks/useDirections";
 import { STATUSES, TaskStatus } from "@/lib/constants";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDialog } from "@/components/TaskDialog";
+import { cn } from "@/lib/utils";
 
 function Column({ status, tasks, directionsMap, onCardClick }: { status: typeof STATUSES[number]; tasks: Task[]; directionsMap: Map<string, any>; onCardClick: (t: Task) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: status.value });
@@ -20,11 +21,18 @@ function Column({ status, tasks, directionsMap, onCardClick }: { status: typeof 
       </div>
       <div
         ref={setNodeRef}
-        className={`flex flex-1 flex-col gap-2 rounded-lg border border-dashed p-2 transition-colors ${isOver ? "border-primary bg-primary/5" : "border-border bg-card/30"}`}
+        className={cn(
+          "flex flex-1 flex-col gap-2 rounded-lg border border-dashed p-2 transition-colors",
+          isOver ? "border-primary bg-primary/5" : "border-border bg-card/30",
+        )}
       >
-        {tasks.map((t) => (
-          <DraggableCard key={t.id} task={t} direction={directionsMap.get(t.direction_id ?? "")} onClick={() => onCardClick(t)} />
-        ))}
+        {tasks.length === 0 ? (
+          <p className="py-6 text-center text-xs text-muted-foreground">Перетащите задачу сюда</p>
+        ) : (
+          tasks.map((t) => (
+            <DraggableCard key={t.id} task={t} direction={directionsMap.get(t.direction_id ?? "")} onClick={() => onCardClick(t)} />
+          ))
+        )}
       </div>
     </div>
   );
@@ -45,7 +53,7 @@ function DraggableCard({ task, direction, onClick }: { task: Task; direction: an
 }
 
 export default function Kanban() {
-  const { data: tasks = [] } = useTasks();
+  const { data: tasks = [], isLoading } = useTasks();
   const { data: directions = [] } = useDirections();
   const update = useUpdateTask();
   const [filters, setFilters] = useState<FiltersState>(initialFilters);
@@ -71,8 +79,11 @@ export default function Kanban() {
     <>
       <PageHeader title="Kanban" description="Перемещайте задачи между колонками" />
       <TaskFilters value={filters} onChange={setFilters} hideStatus />
+      {isLoading && tasks.length === 0 && (
+        <p className="px-4 pt-3 text-xs text-muted-foreground sm:px-8">Загрузка...</p>
+      )}
       <DndContext sensors={sensors} onDragStart={(e: DragStartEvent) => setActiveId(e.active.id as string)} onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto p-8 scrollbar-thin" style={{ minHeight: "calc(100vh - 180px)" }}>
+        <div className="flex gap-4 overflow-x-auto p-4 scrollbar-thin sm:p-8" style={{ minHeight: "calc(100vh - 180px)" }}>
           {STATUSES.map((s) => (
             <Column
               key={s.value}

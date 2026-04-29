@@ -27,8 +27,6 @@ export default function Admin() {
   const [sort, setSort] = useState<SortKey>("created_desc");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  if (!isSuper) return <Navigate to="/" replace />;
-
   const list = useMemo(() => {
     let r = users.filter((u) => {
       if (roleFilter !== "all") {
@@ -51,12 +49,14 @@ export default function Admin() {
     return r;
   }, [users, search, roleFilter, sort]);
 
+  if (!isSuper) return <Navigate to="/" replace />;
+
   const target = users.find((u) => u.id === confirmDelete);
 
   return (
     <>
       <PageHeader title="Администрирование" description="Пользователи, роли и доступ" />
-      <div className="p-8 space-y-4">
+      <div className="space-y-4 p-4 sm:p-8">
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
