@@ -217,7 +217,7 @@ export default function KpiPage() {
           </>
         }
       />
-      <div className="space-y-8 p-8">
+      <div className="space-y-8 p-4 sm:p-8">
         {/* Фильтры */}
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
           <span className="text-xs uppercase tracking-wide text-muted-foreground mr-1">

@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -9,7 +19,7 @@ import { useDirections } from "@/hooks/useDirections";
 import { Task, useCreateTask, useDeleteTask, useUpdateTask, useTaskHistory } from "@/hooks/useTasks";
 import { PRIORITIES, STATUSES, currentQuarter } from "@/lib/constants";
 import { format, parseISO } from "date-fns";
-import { Trash2, Archive, ArchiveRestore, History } from "lucide-react";
+import { Trash2, Archive, ArchiveRestore, History, Loader2 } from "lucide-react";
 import { useKpis } from "@/hooks/useKpis";
 import { useTaskKpiLinks, useLinkKpiTask, useUnlinkKpiTask, useUpdateKpiTaskLink } from "@/hooks/useKpiActivity";
 import { Target, Plus } from "lucide-react";
@@ -46,6 +56,7 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
   const [draftTagIds, setDraftTagIds] = useState<string[]>([]);
 
   const [form, setForm] = useState<Partial<Task>>({});
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -63,6 +74,7 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
       setDraftTagIds([]);
       setNewKpiId("");
       setNewContribution("1");
+      setConfirmDelete(false);
     }
   }, [open, task, defaults]);
 
@@ -97,10 +109,13 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
 
   const remove = async () => {
     if (!task) return;
-    if (!confirm("Удалить задачу безвозвратно?")) return;
     await del.mutateAsync(task.id);
+    setConfirmDelete(false);
     onOpenChange(false);
   };
+
+  const isSaving = create.isPending || update.isPending;
+  const isDeleting = del.isPending;
 
   const linkedKpiIds = new Set(
     task ? links.map((l) => l.kpi_id) : draftLinks.map((l) => l.kpi_id)
@@ -350,22 +365,55 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
           <div className="flex gap-2">
             {task && (
               <>
-                <Button variant="outline" size="sm" onClick={toggleArchive}>
+                <Button variant="outline" size="sm" onClick={toggleArchive} disabled={isSaving || isDeleting}>
                   {task.archived ? <ArchiveRestore className="mr-1.5 h-4 w-4" /> : <Archive className="mr-1.5 h-4 w-4" />}
                   {task.archived ? "Восстановить" : "В архив"}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={remove} className="text-destructive hover:text-destructive">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={isSaving || isDeleting}
+                  className="text-destructive hover:text-destructive"
+                >
                   <Trash2 className="mr-1.5 h-4 w-4" /> Удалить
                 </Button>
               </>
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>Отмена</Button>
-            <Button onClick={submit} disabled={!form.title?.trim()}>Сохранить</Button>
+            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
+              Отмена
+            </Button>
+            <Button onClick={submit} disabled={!form.title?.trim() || isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Сохранить
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить задачу?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Задача «{task?.title}» будет удалена безвозвратно. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={remove}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

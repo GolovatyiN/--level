@@ -53,7 +53,7 @@ export default function DirectionsPage() {
         description="Крупные блоки работ компании"
         actions={<Button onClick={() => setCreating(true)} size="sm"><Plus className="mr-1 h-4 w-4" /> Отдел</Button>}
       />
-      <div className="flex flex-wrap items-center gap-2 px-8 py-3 border-b border-border bg-card/40">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border bg-card/40 px-4 py-3 sm:px-8">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -76,7 +76,7 @@ export default function DirectionsPage() {
           </Select>
         </div>
       </div>
-      <div className="space-y-6 p-8">
+      <div className="space-y-6 p-4 sm:p-8">
         {enriched.map(({ d, dt, done, pct }) => (
           <section key={d.id} className="rounded-xl border border-border bg-card/40 p-5">
             <div className="mb-4 flex items-start justify-between gap-4">

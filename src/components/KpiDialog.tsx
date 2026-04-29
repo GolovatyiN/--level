@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -7,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Kpi, useDeleteKpi, useUpsertKpi } from "@/hooks/useKpis";
 import { useDirections } from "@/hooks/useDirections";
-import { Trash2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
 import { KpiActivity } from "@/components/KpiActivity";
 import { useQuarters, useCreateQuarter, useDeleteQuarter, useKpiUnits, useCreateKpiUnit, useDeleteKpiUnit } from "@/hooks/useTaxonomies";
 import { EditableSelect } from "@/components/EditableSelect";
@@ -30,10 +40,12 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
   const createUnit = useCreateKpiUnit();
   const deleteUnit = useDeleteKpiUnit();
   const [form, setForm] = useState<Partial<Kpi>>({});
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(kpi ?? { name: "", target_value: 100, current_value: 0, unit: "%" });
+      setConfirmDelete(false);
     }
   }, [open, kpi]);
 
@@ -47,10 +59,13 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
 
   const remove = async () => {
     if (!kpi) return;
-    if (!confirm("Удалить KPI?")) return;
     await del.mutateAsync(kpi.id);
+    setConfirmDelete(false);
     onOpenChange(false);
   };
+
+  const isSaving = upsert.isPending;
+  const isDeleting = del.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -152,17 +167,50 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
         <DialogFooter className="sm:justify-between">
           <div>
             {kpi && (
-              <Button variant="ghost" size="sm" onClick={remove} className="text-destructive hover:text-destructive">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmDelete(true)}
+                disabled={isSaving || isDeleting}
+                className="text-destructive hover:text-destructive"
+              >
                 <Trash2 className="mr-1.5 h-4 w-4" /> Удалить
               </Button>
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>Отмена</Button>
-            <Button onClick={submit} disabled={!form.name?.trim()}>Сохранить</Button>
+            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
+              Отмена
+            </Button>
+            <Button onClick={submit} disabled={!form.name?.trim() || isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Сохранить
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить KPI?</AlertDialogTitle>
+            <AlertDialogDescription>
+              KPI «{kpi?.name}» будет удалён вместе с историей прогресса и связями. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={remove}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

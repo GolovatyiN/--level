@@ -6,16 +6,17 @@ import { QUARTERS, currentQuarter } from "@/lib/constants";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDialog } from "@/components/TaskDialog";
+import { EmptyState, PageLoader } from "@/components/UiState";
 import type { Task } from "@/hooks/useTasks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CheckCircle2, Clock, ListTodo, Zap } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, ListTodo, Plus, Zap } from "lucide-react";
 import { isPast, parseISO } from "date-fns";
 
 type StatusFilter = "all" | "active" | "in_progress" | "at_risk" | "blocked" | "completed" | "overdue";
 
 export default function Dashboard() {
-  const { data: tasks = [] } = useTasks();
+  const { data: tasks = [], isLoading } = useTasks();
   const { data: directions = [] } = useDirections();
   const { data: dynamicQuarters = [] } = useQuarters();
   const quarterList = useMemo(() => {
@@ -24,6 +25,7 @@ export default function Dashboard() {
     return Array.from(set).sort();
   }, [dynamicQuarters]);
   const [editing, setEditing] = useState<Task | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const [quarter, setQuarter] = useState<string>("all");
   const [direction, setDirection] = useState<string>("all");
@@ -86,7 +88,7 @@ export default function Dashboard() {
           </>
         }
       />
-      <div className="space-y-8 p-8">
+      <div className="space-y-8 p-4 sm:p-8">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           {stats.map((s) => {
             const active = statusFilter === s.key;
@@ -137,22 +139,41 @@ export default function Dashboard() {
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
             Задачи {filtered.length > 12 ? `(первые 12 из ${filtered.length})` : `(${filtered.length})`}
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.slice(0, 12).map((t) => (
-              <TaskCard
-                key={t.id}
-                task={t}
-                direction={directions.find((d) => d.id === t.direction_id)}
-                onClick={() => setEditing(t)}
-              />
-            ))}
-            {filtered.length === 0 && (
-              <p className="text-sm text-muted-foreground">Нет задач под выбранный фильтр.</p>
-            )}
-          </div>
+          {isLoading && tasks.length === 0 ? (
+            <PageLoader />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={<ListTodo className="h-5 w-5" />}
+              title={tasks.length === 0 ? "Пока нет задач" : "Нет задач под выбранный фильтр"}
+              description={tasks.length === 0 ? "Создайте первую задачу — она появится здесь и в других разделах." : "Сбросьте фильтры или измените их."}
+              action={
+                tasks.length === 0 ? (
+                  <Button onClick={() => setCreating(true)}>
+                    <Plus className="mr-1 h-4 w-4" /> Новая задача
+                  </Button>
+                ) : (
+                  <Button variant="outline" onClick={() => { setQuarter("all"); setDirection("all"); setStatusFilter("all"); }}>
+                    Сбросить фильтры
+                  </Button>
+                )
+              }
+            />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filtered.slice(0, 12).map((t) => (
+                <TaskCard
+                  key={t.id}
+                  task={t}
+                  direction={directions.find((d) => d.id === t.direction_id)}
+                  onClick={() => setEditing(t)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <TaskDialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)} task={editing} />
+      <TaskDialog open={creating} onOpenChange={setCreating} />
     </>
   );
 }

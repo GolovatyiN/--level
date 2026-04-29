@@ -56,7 +56,7 @@ export default function Admin() {
   return (
     <>
       <PageHeader title="Администрирование" description="Пользователи, роли и доступ" />
-      <div className="p-8 space-y-4">
+      <div className="space-y-4 p-4 sm:p-8">
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

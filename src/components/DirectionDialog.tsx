@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Direction, useDeleteDirection, useUpsertDirection } from "@/hooks/useDirections";
 import { DIRECTION_COLORS } from "@/lib/constants";
-import { Trash2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -18,10 +29,12 @@ export function DirectionDialog({ open, onOpenChange, direction }: Props) {
   const upsert = useUpsertDirection();
   const del = useDeleteDirection();
   const [form, setForm] = useState<Partial<Direction>>({});
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(direction ?? { name: "", description: "", color: DIRECTION_COLORS[0], owner: "" });
+      setConfirmDelete(false);
     }
   }, [open, direction]);
 
@@ -33,10 +46,13 @@ export function DirectionDialog({ open, onOpenChange, direction }: Props) {
 
   const remove = async () => {
     if (!direction) return;
-    if (!confirm("Удалить отдел? Задачи останутся, но без отделы.")) return;
     await del.mutateAsync(direction.id);
+    setConfirmDelete(false);
     onOpenChange(false);
   };
+
+  const isSaving = upsert.isPending;
+  const isDeleting = del.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -65,7 +81,11 @@ export function DirectionDialog({ open, onOpenChange, direction }: Props) {
                   key={c}
                   type="button"
                   onClick={() => setForm({ ...form, color: c })}
-                  className={`h-8 w-8 rounded-md border-2 transition ${form.color === c ? "border-foreground scale-110" : "border-transparent"}`}
+                  aria-label={`Выбрать цвет ${c}`}
+                  className={cn(
+                    "h-8 w-8 rounded-md border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    form.color === c ? "scale-110 border-foreground" : "border-transparent",
+                  )}
                   style={{ backgroundColor: c }}
                 />
               ))}
@@ -75,17 +95,50 @@ export function DirectionDialog({ open, onOpenChange, direction }: Props) {
         <DialogFooter className="sm:justify-between">
           <div>
             {direction && (
-              <Button variant="ghost" size="sm" onClick={remove} className="text-destructive hover:text-destructive">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmDelete(true)}
+                disabled={isSaving || isDeleting}
+                className="text-destructive hover:text-destructive"
+              >
                 <Trash2 className="mr-1.5 h-4 w-4" /> Удалить
               </Button>
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>Отмена</Button>
-            <Button onClick={submit} disabled={!form.name?.trim()}>Сохранить</Button>
+            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
+              Отмена
+            </Button>
+            <Button onClick={submit} disabled={!form.name?.trim() || isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Сохранить
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить отдел?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Отдел «{direction?.name}» будет удалён. Связанные задачи останутся, но без привязки к отделу.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={remove}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
