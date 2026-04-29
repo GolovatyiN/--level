@@ -15,7 +15,7 @@ import KpiPage from "./pages/Kpi.tsx";
 import Admin from "./pages/Admin.tsx";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { AppLayout } from "./components/AppLayout";
+import { AppLayout } from "./layouts/AppLayout";
 
 const queryClient = new QueryClient();
 

@@ -27,8 +27,6 @@ export default function Admin() {
   const [sort, setSort] = useState<SortKey>("created_desc");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  if (!isSuper) return <Navigate to="/" replace />;
-
   const list = useMemo(() => {
     let r = users.filter((u) => {
       if (roleFilter !== "all") {
@@ -50,6 +48,8 @@ export default function Admin() {
     }
     return r;
   }, [users, search, roleFilter, sort]);
+
+  if (!isSuper) return <Navigate to="/" replace />;
 
   const target = users.find((u) => u.id === confirmDelete);
 

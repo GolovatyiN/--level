@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Target, AlertTriangle, Users, TrendingUp, X } from "lucide-react";
@@ -42,14 +42,17 @@ export default function KpiPage() {
     return Array.from(set).sort();
   }, [baseTasks]);
 
-  const matchesStatus = (t: typeof baseTasks[number]) => {
-    if (statusFilter === "all") return true;
-    if (statusFilter === "completed") return t.status === "completed";
-    if (statusFilter === "active") return t.status !== "completed";
-    if (statusFilter === "overdue")
-      return !!t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed";
-    return t.status === statusFilter;
-  };
+  const matchesStatus = useCallback(
+    (t: typeof baseTasks[number]) => {
+      if (statusFilter === "all") return true;
+      if (statusFilter === "completed") return t.status === "completed";
+      if (statusFilter === "active") return t.status !== "completed";
+      if (statusFilter === "overdue")
+        return !!t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed";
+      return t.status === statusFilter;
+    },
+    [statusFilter],
+  );
 
   const activeTasks = useMemo(
     () =>
@@ -62,7 +65,7 @@ export default function KpiPage() {
         if (!matchesStatus(t)) return false;
         return true;
       }),
-    [baseTasks, directionFilter, assigneeFilter, statusFilter],
+    [baseTasks, directionFilter, assigneeFilter, matchesStatus],
   );
   const inQuarter = activeTasks.filter((t) => t.quarter === quarter);
 

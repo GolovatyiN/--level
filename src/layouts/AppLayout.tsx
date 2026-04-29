@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsSuperadmin } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { TaskDialog } from "./TaskDialog";
+import { TaskDialog } from "@/components/TaskDialog";
 import { cn } from "@/lib/utils";
 
 const NAV = [
