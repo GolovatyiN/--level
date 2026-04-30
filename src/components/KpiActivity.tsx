@@ -23,22 +23,21 @@ export interface KpiActivityHandle {
   flushPending: () => Promise<void>;
 }
 
-interface ProgressHandle {
-  flush: () => Promise<void>;
-}
-interface CommentsHandle {
+interface FlushHandle {
   flush: () => Promise<void>;
 }
 
 export const KpiActivity = forwardRef<KpiActivityHandle, { kpiId: string; unit: string }>(
   function KpiActivity({ kpiId, unit }, ref) {
-    const progressRef = useRef<ProgressHandle>(null);
-    const commentsRef = useRef<CommentsHandle>(null);
+    const tasksRef = useRef<FlushHandle>(null);
+    const progressRef = useRef<FlushHandle>(null);
+    const commentsRef = useRef<FlushHandle>(null);
 
     useImperativeHandle(ref, () => ({
       flushPending: async () => {
-        // Run both in parallel — independent persistence calls.
+        // Run all in parallel — independent persistence calls.
         await Promise.allSettled([
+          tasksRef.current?.flush() ?? Promise.resolve(),
           progressRef.current?.flush() ?? Promise.resolve(),
           commentsRef.current?.flush() ?? Promise.resolve(),
         ]);
@@ -59,7 +58,7 @@ export const KpiActivity = forwardRef<KpiActivityHandle, { kpiId: string; unit: 
           </TabsTrigger>
         </TabsList>
         <TabsContent value="tasks" className="mt-3">
-          <LinkedTasks kpiId={kpiId} unit={unit} />
+          <LinkedTasks ref={tasksRef} kpiId={kpiId} unit={unit} />
         </TabsContent>
         <TabsContent value="progress" className="mt-3">
           <ProgressLog ref={progressRef} kpiId={kpiId} unit={unit} />
@@ -72,10 +71,55 @@ export const KpiActivity = forwardRef<KpiActivityHandle, { kpiId: string; unit: 
   },
 );
 
-function LinkedTasks({ kpiId, unit }: { kpiId: string; unit: string }) {
+const LinkedTasks = forwardRef<FlushHandle, { kpiId: string; unit: string }>(function LinkedTasks(
+  { kpiId, unit },
+  ref,
+) {
   const { data: links = [] } = useKpiLinkedTasks(kpiId);
   const update = useUpdateKpiTaskLink();
   const unlink = useUnlinkKpiTask();
+
+  // Controlled draft for each link's contribution. Keys are link IDs;
+  // a missing key means "use the persisted value". An entry stays around
+  // until it matches the persisted value again (cleared in flush/onBlur).
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+
+  // Persist any pending edits. Called by the dialog's "Сохранить" so the
+  // user doesn't have to blur the input first.
+  useImperativeHandle(ref, () => ({
+    flush: async () => {
+      const pending = Object.entries(drafts);
+      if (pending.length === 0) return;
+      const ops = pending
+        .map(([linkId, raw]) => {
+          const link = links.find((l) => l.id === linkId);
+          if (!link) return null;
+          const v = parseFloat(raw);
+          if (isNaN(v) || v === link.contribution) return null;
+          return update.mutateAsync({ id: linkId, contribution: v, kpi_id: kpiId });
+        })
+        .filter(Boolean) as Promise<unknown>[];
+      await Promise.allSettled(ops);
+      setDrafts({});
+    },
+  }));
+
+  const persistDraft = (linkId: string, raw: string, current: number) => {
+    const v = parseFloat(raw);
+    if (isNaN(v) || v === current) {
+      // No-op or invalid — just clear the draft so we stop tracking it.
+      setDrafts((d) => {
+        const { [linkId]: _, ...rest } = d;
+        return rest;
+      });
+      return;
+    }
+    update.mutate({ id: linkId, contribution: v, kpi_id: kpiId });
+    setDrafts((d) => {
+      const { [linkId]: _, ...rest } = d;
+      return rest;
+    });
+  };
 
   const statusLabel = (s: string) => STATUSES.find((x) => x.value === s)?.label ?? s;
 
@@ -111,14 +155,16 @@ function LinkedTasks({ kpiId, unit }: { kpiId: string; unit: string }) {
                       <span className="text-xs text-muted-foreground">Вклад:</span>
                       <Input
                         type="number"
-                        defaultValue={l.contribution}
-                        className="h-7 w-24 text-xs"
-                        onBlur={(e) => {
-                          const v = parseFloat(e.target.value);
-                          if (!isNaN(v) && v !== l.contribution) {
-                            update.mutate({ id: l.id, contribution: v, kpi_id: kpiId });
-                          }
+                        value={drafts[l.id] ?? String(l.contribution)}
+                        onChange={(e) =>
+                          setDrafts((d) => ({ ...d, [l.id]: e.target.value }))
+                        }
+                        onBlur={() => {
+                          const raw = drafts[l.id];
+                          if (raw === undefined) return;
+                          persistDraft(l.id, raw, l.contribution);
                         }}
+                        className="h-7 w-24 text-xs"
                       />
                       <span className="text-xs text-muted-foreground">{unit}</span>
                     </div>
@@ -139,9 +185,9 @@ function LinkedTasks({ kpiId, unit }: { kpiId: string; unit: string }) {
       )}
     </div>
   );
-}
+});
 
-const ProgressLog = forwardRef<ProgressHandle, { kpiId: string; unit: string }>(function ProgressLog(
+const ProgressLog = forwardRef<FlushHandle, { kpiId: string; unit: string }>(function ProgressLog(
   { kpiId, unit },
   ref,
 ) {
@@ -247,7 +293,7 @@ const ProgressLog = forwardRef<ProgressHandle, { kpiId: string; unit: string }>(
   );
 });
 
-const Comments = forwardRef<CommentsHandle, { kpiId: string }>(function Comments({ kpiId }, ref) {
+const Comments = forwardRef<FlushHandle, { kpiId: string }>(function Comments({ kpiId }, ref) {
   const { data: items = [] } = useKpiComments(kpiId);
   const add = useAddKpiComment();
   const del = useDeleteKpiComment();
