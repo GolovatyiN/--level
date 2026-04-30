@@ -36,7 +36,7 @@ export function useUpsertDirection() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["directions"] });
-      toast.success("Отдел сохранено");
+      toast.success("Отдел сохранён");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -52,7 +52,7 @@ export function useDeleteDirection() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["directions"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
-      toast.success("Отдел удалено");
+      toast.success("Отдел удалён");
     },
     onError: (e: any) => toast.error(e.message),
   });

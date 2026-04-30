@@ -42,18 +42,34 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
   const [form, setForm] = useState<Partial<Kpi>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Initialize form when the dialog opens or a different KPI is loaded.
+  // Intentionally NOT reacting to every kpi reference change — that would
+  // wipe in-progress edits whenever a background refetch arrives.
   useEffect(() => {
     if (open) {
       setForm(kpi ?? { name: "", target_value: 100, current_value: 0, unit: "%" });
       setConfirmDelete(false);
     }
-  }, [open, kpi]);
+  }, [open, kpi?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // While the dialog is open, silently sync the auto-computed current_value
+  // when backend triggers recompute it (after progress / linked-task changes).
+  useEffect(() => {
+    if (open && kpi) {
+      setForm((prev) => (prev.current_value === kpi.current_value ? prev : { ...prev, current_value: kpi.current_value }));
+    }
+  }, [open, kpi?.current_value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (k: keyof Kpi, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = async () => {
     if (!form.name?.trim()) return;
-    await upsert.mutateAsync(form as any);
+    // For existing KPIs, current_value is managed by backend triggers
+    // (progress log + linked tasks). Omit it from the payload so a stale
+    // form snapshot can't overwrite a freshly recomputed value.
+    const payload: any = { ...form };
+    if (kpi) delete payload.current_value;
+    await upsert.mutateAsync(payload);
     onOpenChange(false);
   };
 
@@ -74,8 +90,14 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
         <div className={kpi ? "grid gap-6 md:grid-cols-2" : "grid gap-4"}>
           <div className="grid gap-4">
           <div className="grid gap-1.5">
-            <Label>Название</Label>
-            <Input value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="Рост органического трафика" />
+            <Label htmlFor="kpi-name">Название</Label>
+            <Input
+              id="kpi-name"
+              autoFocus={!kpi}
+              value={form.name ?? ""}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder="Рост органического трафика"
+            />
           </div>
           <div className="grid gap-1.5">
             <Label>Описание</Label>
@@ -120,7 +142,18 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
             </div>
             <div className="grid gap-1.5">
               <Label>Факт (текущее)</Label>
-              <Input type="number" value={form.current_value ?? 0} onChange={(e) => set("current_value", parseFloat(e.target.value) || 0)} />
+              <Input
+                type="number"
+                value={form.current_value ?? 0}
+                readOnly={!!kpi}
+                disabled={!!kpi}
+                onChange={(e) => set("current_value", parseFloat(e.target.value) || 0)}
+              />
+              {kpi && (
+                <p className="text-[11px] text-muted-foreground">
+                  Управляется журналом прогресса и связанными задачами.
+                </p>
+              )}
             </div>
 
             <div className="grid gap-1.5">

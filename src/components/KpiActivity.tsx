@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Plus, MessageSquare, ListChecks, TrendingUp, CheckCircle2, Circle } from "lucide-react";
+import { Trash2, Plus, MessageSquare, ListChecks, TrendingUp, CheckCircle2, Circle, Loader2 } from "lucide-react";
 import {
   useAddKpiComment,
   useDeleteKpiComment,
@@ -98,8 +98,9 @@ function LinkedTasks({ kpiId, unit }: { kpiId: string; unit: string }) {
                   </div>
                   <button
                     onClick={() => unlink.mutate({ id: l.id, kpi_id: kpiId, task_id: l.task_id })}
-                    className="text-muted-foreground hover:text-destructive"
-                    title="Отвязать"
+                    disabled={unlink.isPending}
+                    className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                    title="Отвязать задачу"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -120,7 +121,7 @@ function ProgressLog({ kpiId, unit }: { kpiId: string; unit: string }) {
 
   const [delta, setDelta] = useState<string>("");
   const [note, setNote] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
 
   const submit = async () => {
     const d = parseFloat(delta);
@@ -133,7 +134,14 @@ function ProgressLog({ kpiId, unit }: { kpiId: string; unit: string }) {
     });
     setDelta("");
     setNote("");
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(format(new Date(), "yyyy-MM-dd"));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      submit();
+    }
   };
 
   return (
@@ -145,17 +153,20 @@ function ProgressLog({ kpiId, unit }: { kpiId: string; unit: string }) {
             placeholder={`+ N (${unit || "—"})`}
             value={delta}
             onChange={(e) => setDelta(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
           />
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <Textarea
           rows={2}
-          placeholder="Комментарий (например: «запустили ещё 100 сайтов»)"
+          placeholder="Комментарий (⌘+Enter — отправить)"
           value={note}
           onChange={(e) => setNote(e.target.value)}
+          onKeyDown={handleKeyDown}
         />
         <Button size="sm" onClick={submit} disabled={!delta || add.isPending} className="w-full">
-          <Plus className="mr-1 h-3.5 w-3.5" /> Добавить прогресс
+          {add.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1 h-3.5 w-3.5" />}
+          Добавить прогресс
         </Button>
       </div>
 
@@ -181,7 +192,9 @@ function ProgressLog({ kpiId, unit }: { kpiId: string; unit: string }) {
                 </div>
                 <button
                   onClick={() => del.mutate({ id: c.id, kpi_id: kpiId })}
-                  className="text-muted-foreground hover:text-destructive"
+                  disabled={del.isPending}
+                  className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                  title="Удалить запись"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -211,12 +224,19 @@ function Comments({ kpiId }: { kpiId: string }) {
       <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
         <Textarea
           rows={3}
-          placeholder="Комментарий, решение, контекст..."
+          placeholder="Комментарий, решение, контекст... (⌘+Enter — отправить)"
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              submit();
+            }
+          }}
         />
         <Button size="sm" onClick={submit} disabled={!text.trim() || add.isPending} className="w-full">
-          <Plus className="mr-1 h-3.5 w-3.5" /> Добавить комментарий
+          {add.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1 h-3.5 w-3.5" />}
+          Добавить комментарий
         </Button>
       </div>
 
@@ -237,7 +257,9 @@ function Comments({ kpiId }: { kpiId: string }) {
                 </div>
                 <button
                   onClick={() => del.mutate({ id: c.id, kpi_id: kpiId })}
-                  className="text-muted-foreground hover:text-destructive"
+                  disabled={del.isPending}
+                  className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                  title="Удалить комментарий"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

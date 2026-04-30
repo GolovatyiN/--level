@@ -58,6 +58,10 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
   const [form, setForm] = useState<Partial<Task>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Seed the form when the dialog opens or the user switches to a different
+  // task. We deliberately don't react to every `task` / `defaults` reference
+  // change — those re-render frequently (inline `defaults={...}`, background
+  // refetches of the tasks list) and would wipe whatever the user is typing.
   useEffect(() => {
     if (open) {
       setForm(
@@ -76,7 +80,7 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
       setNewContribution("1");
       setConfirmDelete(false);
     }
-  }, [open, task, defaults]);
+  }, [open, task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (k: keyof Task, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -88,14 +92,17 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
       const created: any = await create.mutateAsync(form as any);
       const newId: string | undefined = created?.id ?? created?.[0]?.id;
       if (newId) {
-        // Apply buffered KPI links
-        for (const l of draftLinks) {
-          await linkKpi.mutateAsync({ kpi_id: l.kpi_id, task_id: newId, contribution: l.contribution });
-        }
-        // Apply buffered tags
-        for (const tagId of draftTagIds) {
-          await toggleTaskTag.mutateAsync({ entityId: newId, tagId, attach: true });
-        }
+        // Buffered KPI links + tags. Individual failures surface via the
+        // hook's onError toast — don't let one failure keep the dialog stuck
+        // open with a phantom "unsaved" task that's actually already created.
+        await Promise.allSettled([
+          ...draftLinks.map((l) =>
+            linkKpi.mutateAsync({ kpi_id: l.kpi_id, task_id: newId, contribution: l.contribution }),
+          ),
+          ...draftTagIds.map((tagId) =>
+            toggleTaskTag.mutateAsync({ entityId: newId, tagId, attach: true }),
+          ),
+        ]);
       }
     }
     onOpenChange(false);
@@ -143,8 +150,14 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
 
         <div className="grid gap-4">
           <div className="grid gap-1.5">
-            <Label>Название</Label>
-            <Input value={form.title ?? ""} onChange={(e) => set("title", e.target.value)} placeholder="Например: Rank Tracker" />
+            <Label htmlFor="task-title">Название</Label>
+            <Input
+              id="task-title"
+              autoFocus={!task}
+              value={form.title ?? ""}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="Например: Rank Tracker"
+            />
           </div>
 
           <div className="grid gap-1.5">
@@ -158,7 +171,7 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
               <Select value={form.direction_id ?? "none"} onValueChange={(v) => set("direction_id", v === "none" ? null : v)}>
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">— без отделы —</SelectItem>
+                  <SelectItem value="none">— без отдела —</SelectItem>
                   {directions.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
                       <span className="inline-flex items-center gap-2">

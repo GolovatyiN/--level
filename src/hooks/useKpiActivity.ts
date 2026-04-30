@@ -74,6 +74,7 @@ export function useAddKpiComment() {
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["kpi_comments", v.kpi_id] });
+      toast.success("Комментарий добавлен");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -89,6 +90,7 @@ export function useDeleteKpiComment() {
     },
     onSuccess: (kpi_id) => {
       qc.invalidateQueries({ queryKey: ["kpi_comments", kpi_id] });
+      toast.success("Комментарий удалён");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -138,6 +140,7 @@ export function useLinkKpiTask() {
       qc.invalidateQueries({ queryKey: ["kpi_tasks", v.kpi_id] });
       qc.invalidateQueries({ queryKey: ["task_kpis", v.task_id] });
       qc.invalidateQueries({ queryKey: ["kpis"] });
+      toast.success("Задача привязана к KPI");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -171,6 +174,7 @@ export function useUnlinkKpiTask() {
       qc.invalidateQueries({ queryKey: ["kpi_tasks", kpi_id] });
       if (task_id) qc.invalidateQueries({ queryKey: ["task_kpis", task_id] });
       qc.invalidateQueries({ queryKey: ["kpis"] });
+      toast.success("Связь удалена");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -215,6 +219,7 @@ export function useAddKpiProgress() {
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["kpi_progress", v.kpi_id] });
       qc.invalidateQueries({ queryKey: ["kpis"] });
+      toast.success("Прогресс добавлен");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -231,6 +236,7 @@ export function useDeleteKpiProgress() {
     onSuccess: (kpi_id) => {
       qc.invalidateQueries({ queryKey: ["kpi_progress", kpi_id] });
       qc.invalidateQueries({ queryKey: ["kpis"] });
+      toast.success("Запись удалена");
     },
     onError: (e: any) => toast.error(e.message),
   });
