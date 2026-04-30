@@ -70,7 +70,7 @@ export default function Dashboard() {
               <SelectContent>
                 <SelectItem value="all">Все кварталы</SelectItem>
                 <SelectItem value={currentQuarter()}>Текущий ({currentQuarter()})</SelectItem>
-                {quarterList.map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                {quarterList.filter((q) => q !== currentQuarter()).map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={direction} onValueChange={setDirection}>

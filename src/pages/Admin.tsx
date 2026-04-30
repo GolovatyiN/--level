@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Trash2, Shield, ShieldCheck, User as UserIcon, ArrowUpDown } from "lucide-react";
+import { Search, Trash2, Shield, ShieldCheck, User as UserIcon, ArrowUpDown, Loader2 } from "lucide-react";
 import { useAdminUsers, useDeleteAdminUser } from "@/hooks/useAdminUsers";
 import { useIsSuperadmin } from "@/hooks/useUserRole";
 import { useAuth } from "@/contexts/AuthContext";
@@ -162,15 +162,17 @@ export default function Admin() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogCancel disabled={del.isPending}>Отмена</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 if (!confirmDelete) return;
                 await del.mutateAsync(confirmDelete);
                 setConfirmDelete(null);
               }}
+              disabled={del.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
+              {del.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Удалить
             </AlertDialogAction>
           </AlertDialogFooter>

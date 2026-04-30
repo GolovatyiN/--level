@@ -30,7 +30,7 @@ export default function Roadmap() {
 
   return (
     <>
-      <PageHeader title="Roadmap" description="Задачи по кварталам и отделым" />
+      <PageHeader title="Roadmap" description="Задачи по кварталам и отделам" />
       <TaskFilters value={filters} onChange={setFilters} />
       <div className="space-y-6 p-4 sm:p-8">
         {isLoading && tasks.length === 0 ? (

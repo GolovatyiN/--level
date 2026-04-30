@@ -31,12 +31,15 @@ export function DirectionDialog({ open, onOpenChange, direction }: Props) {
   const [form, setForm] = useState<Partial<Direction>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Seed the form on open / when switching to a different direction. Don't
+  // react to every `direction` reference — background refetches would wipe
+  // the user's in-progress edits.
   useEffect(() => {
     if (open) {
       setForm(direction ?? { name: "", description: "", color: DIRECTION_COLORS[0], owner: "" });
       setConfirmDelete(false);
     }
-  }, [open, direction]);
+  }, [open, direction?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async () => {
     if (!form.name?.trim()) return;
@@ -58,12 +61,18 @@ export function DirectionDialog({ open, onOpenChange, direction }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{direction ? "Редактировать отдел" : "Новое отдел"}</DialogTitle>
+          <DialogTitle>{direction ? "Редактировать отдел" : "Новый отдел"}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4">
           <div className="grid gap-1.5">
-            <Label>Название</Label>
-            <Input value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="PBN" />
+            <Label htmlFor="direction-name">Название</Label>
+            <Input
+              id="direction-name"
+              autoFocus={!direction}
+              value={form.name ?? ""}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="PBN"
+            />
           </div>
           <div className="grid gap-1.5">
             <Label>Описание</Label>

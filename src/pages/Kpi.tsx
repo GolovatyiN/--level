@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Target, AlertTriangle, Users, TrendingUp, X } from "lucide-react";
@@ -26,6 +26,18 @@ export default function KpiPage() {
   const [quarter, setQuarter] = useState<string>(currentQuarter());
   const [editingKpi, setEditingKpi] = useState<Kpi | null>(null);
   const [creating, setCreating] = useState(false);
+
+  // Keep the editing KPI in sync with the latest data — backend triggers may
+  // auto-recompute current_value after progress/task changes while the dialog
+  // is open. Without this, the form would hold stale numbers and a Save would
+  // overwrite the recomputed value.
+  useEffect(() => {
+    if (!editingKpi) return;
+    const fresh = kpis.find((k) => k.id === editingKpi.id);
+    if (fresh && fresh.updated_at !== editingKpi.updated_at) {
+      setEditingKpi(fresh);
+    }
+  }, [kpis, editingKpi]);
   const [directionFilter, setDirectionFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
