@@ -77,21 +77,34 @@ export default function DirectionsPage() {
         </div>
       </div>
       <div className="space-y-6 p-4 sm:p-8">
-        {enriched.map(({ d, dt, done, pct }) => (
-          <section key={d.id} className="rounded-xl border border-border bg-card/40 p-5">
+        {enriched.map(({ d, dt, done, pct }, idx) => (
+          <section
+            key={d.id}
+            style={{ animationDelay: `${idx * 50}ms` }}
+            className="group animate-fade-in rounded-xl border border-border bg-card/40 p-5 transition-colors duration-200 hover:border-foreground/30"
+          >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div className="flex items-start gap-3">
-                <span className="mt-1.5 h-3 w-3 rounded-full" style={{ backgroundColor: d.color }} />
+                <span
+                  className="mt-1.5 h-3 w-3 rounded-full transition-transform duration-300 group-hover:scale-125"
+                  style={{
+                    backgroundColor: d.color,
+                    boxShadow: `0 0 0 0 ${d.color}33`,
+                  }}
+                />
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-semibold">{d.name}</h3>
-                    <button onClick={() => setEditingDir(d)} className="text-muted-foreground hover:text-foreground">
+                    <button
+                      onClick={() => setEditingDir(d)}
+                      className="text-muted-foreground transition-all duration-200 hover:text-foreground hover:rotate-12"
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   {d.description && <p className="text-sm text-muted-foreground">{d.description}</p>}
                   {d.owner && <p className="mt-1 text-xs text-muted-foreground">Ответственный: {d.owner}</p>}
-                  <p className="mt-1 text-xs text-muted-foreground">{done} из {dt.length} завершено · {pct}%</p>
+                  <p className="mt-1 text-xs text-muted-foreground tabular-nums">{done} из {dt.length} завершено · {pct}%</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => setCreateTaskFor(d.id)}>

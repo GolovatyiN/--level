@@ -57,13 +57,13 @@ export const KpiActivity = forwardRef<KpiActivityHandle, { kpiId: string; unit: 
             <MessageSquare className="h-3.5 w-3.5" /> Чат
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="tasks" className="mt-3">
+        <TabsContent value="tasks" className="mt-3 animate-fade-in">
           <LinkedTasks ref={tasksRef} kpiId={kpiId} unit={unit} />
         </TabsContent>
-        <TabsContent value="progress" className="mt-3">
+        <TabsContent value="progress" className="mt-3 animate-fade-in">
           <ProgressLog ref={progressRef} kpiId={kpiId} unit={unit} />
         </TabsContent>
-        <TabsContent value="comments" className="mt-3">
+        <TabsContent value="comments" className="mt-3 animate-fade-in">
           <Comments ref={commentsRef} kpiId={kpiId} />
         </TabsContent>
       </Tabs>

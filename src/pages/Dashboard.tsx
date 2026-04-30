@@ -7,6 +7,7 @@ import { useQuarters } from "@/hooks/useTaxonomies";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDialog } from "@/components/TaskDialog";
 import { EmptyState, PageLoader } from "@/components/UiState";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import type { Task } from "@/hooks/useTasks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -100,19 +101,23 @@ export default function Dashboard() {
       />
       <div className="space-y-8 p-4 sm:p-8">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          {stats.map((s) => {
+          {stats.map((s, idx) => {
             const active = statusFilter === s.key;
             return (
               <button
                 key={s.label}
                 onClick={() => setStatusFilter(active ? "all" : s.key)}
-                className={`text-left rounded-xl border bg-card p-4 shadow-card transition hover:border-foreground/40 ${active ? "border-foreground/60 ring-1 ring-foreground/40" : "border-border"}`}
+                style={{ animationDelay: `${idx * 40}ms` }}
+                className={`group hover-lift animate-fade-in text-left rounded-xl border bg-card p-4 shadow-card hover:border-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "border-foreground/60 ring-1 ring-foreground/40" : "border-border"}`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs uppercase tracking-wide text-muted-foreground">{s.label}</span>
-                  <s.icon className={`h-4 w-4 ${s.color}`} />
+                  <s.icon className={`h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 ${s.color}`} />
                 </div>
-                <div className={`mt-2 text-3xl font-semibold ${s.color}`}>{s.value}</div>
+                <AnimatedNumber
+                  value={typeof s.value === "number" ? s.value : 0}
+                  className={`mt-2 block text-3xl font-semibold tabular-nums ${s.color}`}
+                />
               </button>
             );
           })}
@@ -128,16 +133,26 @@ export default function Dashboard() {
               const done = t.filter((x) => x.status === "completed").length;
               const pct = t.length ? Math.round((done / t.length) * 100) : 0;
               return (
-                <div key={d.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
+                <div key={d.id} className="hover-lift group rounded-xl border border-border bg-card p-4 shadow-card">
                   <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                    <span
+                      className="h-2.5 w-2.5 rounded-full transition-transform duration-300 group-hover:scale-125"
+                      style={{ backgroundColor: d.color }}
+                    />
                     <span className="font-medium">{d.name}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">{t.length} задач</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      <AnimatedNumber value={t.length} duration={400} /> задач
+                    </span>
                   </div>
                   <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-foreground/80 transition-[width] duration-300" style={{ width: `${pct}%` }} />
+                    <div
+                      className="h-full rounded-full bg-foreground/80 transition-[width] duration-700 ease-out"
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">{done} из {t.length} завершено</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    <AnimatedNumber value={done} duration={400} /> из <AnimatedNumber value={t.length} duration={400} /> завершено
+                  </p>
                 </div>
               );
             })}

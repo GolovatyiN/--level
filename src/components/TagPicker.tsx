@@ -55,14 +55,14 @@ export function TagPicker({ entity, entityId, selectedIds, onChange }: Props) {
         <Badge
           key={t.id}
           variant="secondary"
-          className="gap-1 pr-1 text-xs"
+          className="group animate-scale-in gap-1 pr-1 text-xs transition-transform duration-200 hover:scale-105"
           style={{ backgroundColor: `${t.color}22`, color: t.color, borderColor: `${t.color}44` }}
         >
           {t.name}
           <button
             type="button"
             onClick={() => flip(t.id, false)}
-            className="ml-0.5 rounded-full opacity-60 hover:opacity-100"
+            className="ml-0.5 rounded-full opacity-60 transition-all duration-150 hover:rotate-90 hover:opacity-100"
           >
             <X className="h-3 w-3" />
           </button>
