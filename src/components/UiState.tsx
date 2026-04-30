@@ -26,11 +26,11 @@ export function EmptyState({ icon, title, description, action, className }: Empt
   return (
     <div
       className={cn(
-        "rounded-xl border border-dashed border-border bg-card/40 p-10 text-center",
+        "animate-fade-in rounded-xl border border-dashed border-border bg-card/40 p-10 text-center",
         className,
       )}
     >
-      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+      <div className="mx-auto mb-3 flex h-10 w-10 animate-pulse-soft items-center justify-center rounded-full bg-muted text-muted-foreground">
         {icon ?? <Inbox className="h-5 w-5" />}
       </div>
       <p className="text-sm font-medium text-foreground">{title}</p>

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { QUARTERS, currentQuarter } from "@/lib/constants";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { isPast, parseISO, eachDayOfInterval, startOfQuarter, endOfQuarter, format } from "date-fns";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
 
 export default function KpiPage() {
@@ -286,13 +287,21 @@ export default function KpiPage() {
 
         {/* Авто-метрики верх */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((s) => (
-            <div key={s.label} className="rounded-xl border border-border bg-card p-4 shadow-card">
+          {stats.map((s, idx) => (
+            <div
+              key={s.label}
+              style={{ animationDelay: `${idx * 40}ms` }}
+              className="hover-lift group animate-fade-in rounded-xl border border-border bg-card p-4 shadow-card"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-xs uppercase tracking-wide text-muted-foreground">{s.label}</span>
-                <s.icon className={`h-4 w-4 ${s.danger ? "text-destructive" : "text-muted-foreground"}`} />
+                <s.icon
+                  className={`h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 ${s.danger ? "text-destructive" : "text-muted-foreground"}`}
+                />
               </div>
-              <div className={`mt-2 text-3xl font-semibold ${s.danger ? "text-destructive" : "text-foreground"}`}>{s.value}</div>
+              <div className={`mt-2 text-3xl font-semibold tabular-nums ${s.danger ? "text-destructive" : "text-foreground"}`}>
+                {typeof s.value === "number" ? <AnimatedNumber value={s.value} /> : s.value}
+              </div>
             </div>
           ))}
         </div>
@@ -423,20 +432,22 @@ export default function KpiPage() {
             <h2 className="text-sm font-semibold text-muted-foreground">Цели (план vs факт)</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredKpis.map((k) => {
+            {filteredKpis.map((k, idx) => {
               const pct = kpiProgress(k);
               const st = kpiStatus(k);
               const dir = directions.find((d) => d.id === k.direction_id);
+              const reached = pct >= 100;
               return (
                 <div
                   key={k.id}
                   onClick={() => setEditingKpi(k)}
-                  className="cursor-pointer rounded-xl border border-border bg-card p-4 shadow-card transition hover:border-foreground/30"
+                  style={{ animationDelay: `${idx * 35}ms` }}
+                  className="hover-lift group animate-fade-in cursor-pointer rounded-xl border border-border bg-card p-4 shadow-card hover:border-foreground/30"
                 >
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <h4 className="text-sm font-medium leading-snug">{k.name}</h4>
-                    <button className="text-muted-foreground hover:text-foreground">
-                      <Pencil className="h-3.5 w-3.5" />
+                    <button className="text-muted-foreground transition-colors group-hover:text-foreground">
+                      <Pencil className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-12" />
                     </button>
                   </div>
                   {(dir || k.quarter || k.owner) && (
@@ -445,18 +456,22 @@ export default function KpiPage() {
                     </p>
                   )}
                   <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-semibold">{k.current_value}</span>
-                    <span className="text-sm text-muted-foreground">/ {k.target_value} {k.unit}</span>
+                    <AnimatedNumber value={k.current_value} className="text-2xl font-semibold tabular-nums" />
+                    <span className="text-sm text-muted-foreground">
+                      / <AnimatedNumber value={k.target_value} duration={400} /> {k.unit}
+                    </span>
                   </div>
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                     <div
-                      className="h-full rounded-full"
+                      className={`h-full rounded-full transition-[width] duration-700 ease-out ${reached ? "animate-pulse-soft" : ""}`}
                       style={{ width: `${Math.min(100, pct)}%`, backgroundColor: `hsl(var(--${st.color}))` }}
                     />
                   </div>
                   <div className="mt-2 flex items-center justify-between text-xs">
                     <span style={{ color: `hsl(var(--${st.color}))` }} className="font-medium">{st.label}</span>
-                    <span className="text-muted-foreground">{pct}%</span>
+                    <span className="text-muted-foreground tabular-nums">
+                      <AnimatedNumber value={pct} duration={500} />%
+                    </span>
                   </div>
                 </div>
               );

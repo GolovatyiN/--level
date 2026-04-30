@@ -88,15 +88,32 @@ export function AppLayout() {
             end={(item as any).end}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 isActive
                   ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:translate-x-0.5",
               )
             }
           >
-            <item.icon className="h-4 w-4" />
-            {item.label}
+            {({ isActive }) => (
+              <>
+                {/* Left accent bar — slides in on hover, persists on active */}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-foreground transition-all duration-200",
+                    isActive ? "opacity-100" : "opacity-0 group-hover:opacity-60",
+                  )}
+                />
+                <item.icon
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    isActive ? "scale-110" : "group-hover:scale-110",
+                  )}
+                />
+                {item.label}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>

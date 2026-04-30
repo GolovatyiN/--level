@@ -92,8 +92,10 @@ export function DirectionDialog({ open, onOpenChange, direction }: Props) {
                   onClick={() => setForm({ ...form, color: c })}
                   aria-label={`Выбрать цвет ${c}`}
                   className={cn(
-                    "h-8 w-8 rounded-md border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    form.color === c ? "scale-110 border-foreground" : "border-transparent",
+                    "h-8 w-8 rounded-md border-2 transition-all duration-200 hover:scale-110 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95",
+                    form.color === c
+                      ? "scale-110 border-foreground shadow-md ring-2 ring-foreground/20"
+                      : "border-transparent",
                   )}
                   style={{ backgroundColor: c }}
                 />

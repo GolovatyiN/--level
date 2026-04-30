@@ -19,14 +19,14 @@ export function TaskCard({ task, direction, onClick, dragHandle, isDragging }: P
     <div
       onClick={onClick}
       className={cn(
-        "group relative cursor-pointer rounded-lg border border-border bg-card p-3 shadow-card transition-all hover:border-primary/40 hover:shadow-elegant",
-        isDragging && "opacity-50"
+        "group hover-lift relative cursor-pointer rounded-lg border border-border bg-card p-3 shadow-card hover:border-primary/40",
+        isDragging && "opacity-50",
       )}
     >
       <div className="flex items-start gap-2">
         {direction && (
           <div
-            className="mt-1 h-2 w-2 shrink-0 rounded-full"
+            className="mt-1 h-2 w-2 shrink-0 rounded-full transition-transform duration-300 group-hover:scale-125"
             style={{ backgroundColor: direction.color }}
             title={direction.name}
           />
@@ -53,7 +53,12 @@ export function TaskCard({ task, direction, onClick, dragHandle, isDragging }: P
               {task.quarter}
             </span>
             {task.deadline && (
-              <span className={cn("inline-flex items-center gap-1 text-[10px]", overdue ? "text-destructive" : "text-muted-foreground")}>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 text-[10px]",
+                  overdue ? "animate-pulse-soft text-destructive" : "text-muted-foreground",
+                )}
+              >
                 <Calendar className="h-3 w-3" />
                 {format(parseISO(task.deadline), "dd.MM")}
               </span>

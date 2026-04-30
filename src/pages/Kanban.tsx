@@ -15,19 +15,37 @@ function Column({ status, tasks, directionsMap, onCardClick }: { status: typeof 
   return (
     <div className="flex w-72 shrink-0 flex-col">
       <div className="mb-2 flex items-center gap-2 px-1">
-        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: `hsl(var(--${status.colorVar}))` }} />
+        <span
+          className="h-2 w-2 rounded-full transition-transform duration-300"
+          style={{
+            backgroundColor: `hsl(var(--${status.colorVar}))`,
+            boxShadow: isOver ? `0 0 12px hsl(var(--${status.colorVar}))` : undefined,
+            transform: isOver ? "scale(1.4)" : "scale(1)",
+          }}
+        />
         <h3 className="text-sm font-medium">{status.label}</h3>
-        <span className="ml-auto text-xs text-muted-foreground">{tasks.length}</span>
+        <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+          {tasks.length}
+        </span>
       </div>
       <div
         ref={setNodeRef}
         className={cn(
-          "flex flex-1 flex-col gap-2 rounded-lg border border-dashed p-2 transition-colors",
-          isOver ? "border-primary bg-primary/5" : "border-border bg-card/30",
+          "flex flex-1 flex-col gap-2 rounded-lg border border-dashed p-2 transition-all duration-200",
+          isOver
+            ? "scale-[1.01] border-primary bg-primary/5 shadow-elegant"
+            : "border-border bg-card/30",
         )}
       >
         {tasks.length === 0 ? (
-          <p className="py-6 text-center text-xs text-muted-foreground">Перетащите задачу сюда</p>
+          <p
+            className={cn(
+              "py-6 text-center text-xs transition-colors",
+              isOver ? "animate-pulse-soft font-medium text-foreground" : "text-muted-foreground",
+            )}
+          >
+            {isOver ? "Отпустите здесь" : "Перетащите задачу сюда"}
+          </p>
         ) : (
           tasks.map((t) => (
             <DraggableCard key={t.id} task={t} direction={directionsMap.get(t.direction_id ?? "")} onClick={() => onCardClick(t)} />
