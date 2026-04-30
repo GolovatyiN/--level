@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,32 +18,59 @@ import {
 import { format, parseISO } from "date-fns";
 import { STATUSES } from "@/lib/constants";
 
-export function KpiActivity({ kpiId, unit }: { kpiId: string; unit: string }) {
-  return (
-    <Tabs defaultValue="tasks" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="tasks" className="gap-1.5">
-          <ListChecks className="h-3.5 w-3.5" /> Задачи
-        </TabsTrigger>
-        <TabsTrigger value="progress" className="gap-1.5">
-          <TrendingUp className="h-3.5 w-3.5" /> Прогресс
-        </TabsTrigger>
-        <TabsTrigger value="comments" className="gap-1.5">
-          <MessageSquare className="h-3.5 w-3.5" /> Чат
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="tasks" className="mt-3">
-        <LinkedTasks kpiId={kpiId} unit={unit} />
-      </TabsContent>
-      <TabsContent value="progress" className="mt-3">
-        <ProgressLog kpiId={kpiId} unit={unit} />
-      </TabsContent>
-      <TabsContent value="comments" className="mt-3">
-        <Comments kpiId={kpiId} />
-      </TabsContent>
-    </Tabs>
-  );
+export interface KpiActivityHandle {
+  /** Commit any unsubmitted drafts (progress, comments). Called when the main "Сохранить" runs. */
+  flushPending: () => Promise<void>;
 }
+
+interface ProgressHandle {
+  flush: () => Promise<void>;
+}
+interface CommentsHandle {
+  flush: () => Promise<void>;
+}
+
+export const KpiActivity = forwardRef<KpiActivityHandle, { kpiId: string; unit: string }>(
+  function KpiActivity({ kpiId, unit }, ref) {
+    const progressRef = useRef<ProgressHandle>(null);
+    const commentsRef = useRef<CommentsHandle>(null);
+
+    useImperativeHandle(ref, () => ({
+      flushPending: async () => {
+        // Run both in parallel — independent persistence calls.
+        await Promise.allSettled([
+          progressRef.current?.flush() ?? Promise.resolve(),
+          commentsRef.current?.flush() ?? Promise.resolve(),
+        ]);
+      },
+    }));
+
+    return (
+      <Tabs defaultValue="tasks" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="tasks" className="gap-1.5">
+            <ListChecks className="h-3.5 w-3.5" /> Задачи
+          </TabsTrigger>
+          <TabsTrigger value="progress" className="gap-1.5">
+            <TrendingUp className="h-3.5 w-3.5" /> Прогресс
+          </TabsTrigger>
+          <TabsTrigger value="comments" className="gap-1.5">
+            <MessageSquare className="h-3.5 w-3.5" /> Чат
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="tasks" className="mt-3">
+          <LinkedTasks kpiId={kpiId} unit={unit} />
+        </TabsContent>
+        <TabsContent value="progress" className="mt-3">
+          <ProgressLog ref={progressRef} kpiId={kpiId} unit={unit} />
+        </TabsContent>
+        <TabsContent value="comments" className="mt-3">
+          <Comments ref={commentsRef} kpiId={kpiId} />
+        </TabsContent>
+      </Tabs>
+    );
+  },
+);
 
 function LinkedTasks({ kpiId, unit }: { kpiId: string; unit: string }) {
   const { data: links = [] } = useKpiLinkedTasks(kpiId);
@@ -114,7 +141,10 @@ function LinkedTasks({ kpiId, unit }: { kpiId: string; unit: string }) {
   );
 }
 
-function ProgressLog({ kpiId, unit }: { kpiId: string; unit: string }) {
+const ProgressLog = forwardRef<ProgressHandle, { kpiId: string; unit: string }>(function ProgressLog(
+  { kpiId, unit },
+  ref,
+) {
   const { data: items = [] } = useKpiProgressLog(kpiId);
   const add = useAddKpiProgress();
   const del = useDeleteKpiProgress();
@@ -136,6 +166,16 @@ function ProgressLog({ kpiId, unit }: { kpiId: string; unit: string }) {
     setNote("");
     setDate(format(new Date(), "yyyy-MM-dd"));
   };
+
+  // Expose a flush method so the parent dialog's "Сохранить" can commit a
+  // pending draft the user typed but didn't explicitly submit.
+  useImperativeHandle(ref, () => ({
+    flush: async () => {
+      const d = parseFloat(delta);
+      if (isNaN(d) || d === 0) return;
+      await submit();
+    },
+  }));
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -205,9 +245,9 @@ function ProgressLog({ kpiId, unit }: { kpiId: string; unit: string }) {
       )}
     </div>
   );
-}
+});
 
-function Comments({ kpiId }: { kpiId: string }) {
+const Comments = forwardRef<CommentsHandle, { kpiId: string }>(function Comments({ kpiId }, ref) {
   const { data: items = [] } = useKpiComments(kpiId);
   const add = useAddKpiComment();
   const del = useDeleteKpiComment();
@@ -218,6 +258,15 @@ function Comments({ kpiId }: { kpiId: string }) {
     await add.mutateAsync({ kpi_id: kpiId, content: text.trim() });
     setText("");
   };
+
+  // Expose flush so the dialog's main "Сохранить" can persist a typed-but-
+  // not-submitted comment draft.
+  useImperativeHandle(ref, () => ({
+    flush: async () => {
+      if (!text.trim()) return;
+      await submit();
+    },
+  }));
 
   return (
     <div className="space-y-3">
@@ -270,4 +319,4 @@ function Comments({ kpiId }: { kpiId: string }) {
       )}
     </div>
   );
-}
+});
