@@ -58,14 +58,19 @@ function Column({ status, tasks, directionsMap, onCardClick }: { status: typeof 
 
 function DraggableCard({ task, direction, onClick }: { task: Task; direction: any; onClick: () => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id });
+  // Attach drag listeners/attributes to the whole wrapper so the user can
+  // grab the card from any spot. PointerSensor's activationConstraint
+  // (distance: 5px) keeps plain clicks from registering as drags, so the
+  // existing onClick that opens the task dialog still works.
   return (
-    <div ref={setNodeRef} style={{ opacity: isDragging ? 0.4 : 1 }}>
-      <TaskCard
-        task={task}
-        direction={direction}
-        onClick={onClick}
-        dragHandle={{ ...listeners, ...attributes } as any}
-      />
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      style={{ opacity: isDragging ? 0.4 : 1, touchAction: "none" }}
+      className="cursor-grab active:cursor-grabbing"
+    >
+      <TaskCard task={task} direction={direction} onClick={onClick} />
     </div>
   );
 }

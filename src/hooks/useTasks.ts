@@ -103,11 +103,30 @@ export function useUpdateTask() {
       }
       return data;
     },
-    onSuccess: () => {
+    // Optimistic update — apply the patch to all cached task lists *before*
+    // the network round-trip. The Kanban card snaps to the new column the
+    // instant the user drops it; if the server rejects, we roll back.
+    onMutate: async ({ id, patch }) => {
+      await qc.cancelQueries({ queryKey: ["tasks"] });
+      const snapshots = qc.getQueriesData<Task[]>({ queryKey: ["tasks"] });
+      qc.setQueriesData<Task[] | undefined>({ queryKey: ["tasks"] }, (old) => {
+        if (!old) return old;
+        return old.map((t) => (t.id === id ? { ...t, ...patch } : t));
+      });
+      return { snapshots };
+    },
+    onError: (e: any, _vars, ctx) => {
+      // Roll back to the snapshot we took in onMutate.
+      ctx?.snapshots.forEach(([key, data]) => {
+        qc.setQueryData(key, data);
+      });
+      toast.error(e.message);
+    },
+    onSettled: () => {
+      // Whether success or failure, refetch to converge with the server.
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["task_history"] });
     },
-    onError: (e: any) => toast.error(e.message),
   });
 }
 
