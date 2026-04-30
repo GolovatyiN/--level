@@ -86,17 +86,30 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
 
   const submit = async () => {
     if (!form.title?.trim()) return;
+    // If the user typed a KPI link but didn't click "+", treat it as part of
+    // their changes and persist it too. Same idea: "Сохранить" should commit
+    // everything they touched in this dialog.
+    const pendingLink = newKpiId
+      ? { kpi_id: newKpiId, contribution: parseFloat(newContribution) || 0 }
+      : null;
+
     if (task) {
       await update.mutateAsync({ id: task.id, patch: form, prev: task });
+      if (pendingLink) {
+        await linkKpi
+          .mutateAsync({ kpi_id: pendingLink.kpi_id, task_id: task.id, contribution: pendingLink.contribution })
+          .catch(() => {});
+      }
     } else {
       const created: any = await create.mutateAsync(form as any);
       const newId: string | undefined = created?.id ?? created?.[0]?.id;
       if (newId) {
+        const linksToPersist = pendingLink ? [...draftLinks, pendingLink] : draftLinks;
         // Buffered KPI links + tags. Individual failures surface via the
         // hook's onError toast — don't let one failure keep the dialog stuck
         // open with a phantom "unsaved" task that's actually already created.
         await Promise.allSettled([
-          ...draftLinks.map((l) =>
+          ...linksToPersist.map((l) =>
             linkKpi.mutateAsync({ kpi_id: l.kpi_id, task_id: newId, contribution: l.contribution }),
           ),
           ...draftTagIds.map((tagId) =>

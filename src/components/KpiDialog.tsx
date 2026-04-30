@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Kpi, useDeleteKpi, useUpsertKpi } from "@/hooks/useKpis";
 import { useDirections } from "@/hooks/useDirections";
 import { Trash2, Loader2 } from "lucide-react";
-import { KpiActivity } from "@/components/KpiActivity";
+import { KpiActivity, type KpiActivityHandle } from "@/components/KpiActivity";
 import { useQuarters, useCreateQuarter, useDeleteQuarter, useKpiUnits, useCreateKpiUnit, useDeleteKpiUnit } from "@/hooks/useTaxonomies";
 import { EditableSelect } from "@/components/EditableSelect";
 import { TagPicker } from "@/components/TagPicker";
@@ -41,6 +41,7 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
   const deleteUnit = useDeleteKpiUnit();
   const [form, setForm] = useState<Partial<Kpi>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const activityRef = useRef<KpiActivityHandle>(null);
 
   // Initialize form when the dialog opens or a different KPI is loaded.
   // Intentionally NOT reacting to every kpi reference change — that would
@@ -69,7 +70,13 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
     // form snapshot can't overwrite a freshly recomputed value.
     const payload: any = { ...form };
     if (kpi) delete payload.current_value;
-    await upsert.mutateAsync(payload);
+    // Save form fields and flush any pending tab drafts (typed-but-not-
+    // submitted progress / comment) in parallel. The user expects "Сохранить"
+    // to persist everything they've touched, not just the left-side form.
+    await Promise.all([
+      upsert.mutateAsync(payload),
+      kpi ? activityRef.current?.flushPending() ?? Promise.resolve() : Promise.resolve(),
+    ]);
     onOpenChange(false);
   };
 
@@ -193,7 +200,7 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
           </div>
           {kpi && (
             <div className="border-t border-border pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0">
-              <KpiActivity kpiId={kpi.id} unit={form.unit ?? kpi.unit ?? ""} />
+              <KpiActivity ref={activityRef} kpiId={kpi.id} unit={form.unit ?? kpi.unit ?? ""} />
             </div>
           )}
         </div>

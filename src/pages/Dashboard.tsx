@@ -31,23 +31,33 @@ export default function Dashboard() {
   const [direction, setDirection] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const filtered = useMemo(() => {
+  // "Base" = quarter + direction filters only. Status counts are computed
+  // off this so toggling a status card doesn't change the totals — clicking
+  // "Блокеры" should narrow the task list below, but "Всего" must keep
+  // showing the real total under the current quarter/direction.
+  const baseFiltered = useMemo(() => {
     return tasks.filter((t) => {
       if (quarter !== "all" && t.quarter !== quarter) return false;
       if (direction !== "all" && t.direction_id !== direction) return false;
+      return true;
+    });
+  }, [tasks, quarter, direction]);
+
+  const filtered = useMemo(() => {
+    return baseFiltered.filter((t) => {
       if (statusFilter === "active" && t.status === "completed") return false;
       if (statusFilter === "overdue" && !(t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed")) return false;
       if (["in_progress", "at_risk", "blocked", "completed"].includes(statusFilter) && t.status !== statusFilter) return false;
       return true;
     });
-  }, [tasks, quarter, direction, statusFilter]);
+  }, [baseFiltered, statusFilter]);
 
-  const total = filtered.length;
-  const inProgress = filtered.filter((t) => t.status === "in_progress").length;
-  const atRisk = filtered.filter((t) => t.status === "at_risk").length;
-  const blocked = filtered.filter((t) => t.status === "blocked").length;
-  const completed = filtered.filter((t) => t.status === "completed").length;
-  const overdue = filtered.filter((t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed").length;
+  const total = baseFiltered.length;
+  const inProgress = baseFiltered.filter((t) => t.status === "in_progress").length;
+  const atRisk = baseFiltered.filter((t) => t.status === "at_risk").length;
+  const blocked = baseFiltered.filter((t) => t.status === "blocked").length;
+  const completed = baseFiltered.filter((t) => t.status === "completed").length;
+  const overdue = baseFiltered.filter((t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed").length;
 
   const stats = [
     { label: "Всего", value: total, icon: ListTodo, key: "all" as StatusFilter, color: "text-foreground" },
@@ -112,7 +122,9 @@ export default function Dashboard() {
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground">По отделам</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {directions.map((d) => {
-              const t = filtered.filter((x) => x.direction_id === d.id);
+              // Use baseFiltered (not status-filtered) so per-direction totals
+              // stay stable when toggling a status card above.
+              const t = baseFiltered.filter((x) => x.direction_id === d.id);
               const done = t.filter((x) => x.status === "completed").length;
               const pct = t.length ? Math.round((done / t.length) * 100) : 0;
               return (
@@ -122,8 +134,8 @@ export default function Dashboard() {
                     <span className="font-medium">{d.name}</span>
                     <span className="ml-auto text-xs text-muted-foreground">{t.length} задач</span>
                   </div>
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                    <div className="h-full rounded-full bg-gradient-primary" style={{ width: `${pct}%` }} />
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-foreground/80 transition-[width] duration-300" style={{ width: `${pct}%` }} />
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">{done} из {t.length} завершено</p>
                 </div>
