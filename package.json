@@ -10,7 +10,12 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:link": "supabase link --project-ref cbevjqmqfbnoicdbjimd",
+    "db:push": "supabase db push --linked",
+    "db:diff": "supabase db diff --linked",
+    "db:pull": "supabase db pull --linked",
+    "db:reset": "supabase db reset --linked"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       directions: {
@@ -55,6 +80,7 @@ export type Database = {
           created_at: string
           id: string
           kpi_id: string
+          mentioned_user_ids: string[]
           updated_at: string
         }
         Insert: {
@@ -64,6 +90,7 @@ export type Database = {
           created_at?: string
           id?: string
           kpi_id: string
+          mentioned_user_ids?: string[]
           updated_at?: string
         }
         Update: {
@@ -73,6 +100,7 @@ export type Database = {
           created_at?: string
           id?: string
           kpi_id?: string
+          mentioned_user_ids?: string[]
           updated_at?: string
         }
         Relationships: [
@@ -233,6 +261,7 @@ export type Database = {
           id: string
           name: string
           owner: string | null
+          owner_id: string | null
           quarter: string | null
           target_value: number
           unit: string
@@ -248,6 +277,7 @@ export type Database = {
           id?: string
           name: string
           owner?: string | null
+          owner_id?: string | null
           quarter?: string | null
           target_value?: number
           unit?: string
@@ -263,6 +293,7 @@ export type Database = {
           id?: string
           name?: string
           owner?: string | null
+          owner_id?: string | null
           quarter?: string | null
           target_value?: number
           unit?: string
@@ -277,6 +308,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          body: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -423,6 +493,7 @@ export type Database = {
           archived: boolean
           asana_url: string | null
           assignee: string | null
+          assignee_id: string | null
           created_at: string
           created_by: string | null
           customer: string | null
@@ -441,6 +512,7 @@ export type Database = {
           archived?: boolean
           asana_url?: string | null
           assignee?: string | null
+          assignee_id?: string | null
           created_at?: string
           created_by?: string | null
           customer?: string | null
@@ -459,6 +531,7 @@ export type Database = {
           archived?: boolean
           asana_url?: string | null
           assignee?: string | null
+          assignee_id?: string | null
           created_at?: string
           created_by?: string | null
           customer?: string | null
@@ -652,6 +725,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["superadmin", "admin", "user"],
