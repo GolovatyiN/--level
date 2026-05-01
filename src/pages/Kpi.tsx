@@ -12,12 +12,14 @@ import { useQuarters } from "@/hooks/useTaxonomies";
 import { isPast, parseISO, eachDayOfInterval, startOfQuarter, endOfQuarter, format } from "date-fns";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Confetti } from "@/components/Confetti";
+import { useUserMap } from "@/hooks/useUsers";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
 
 export default function KpiPage() {
   const { data: tasks = [] } = useTasks(true);
   const { data: directions = [] } = useDirections();
   const { data: kpis = [] } = useKpis();
+  const { map: userMap } = useUserMap();
   const { data: dynamicQuarters = [] } = useQuarters();
   const quarterList = useMemo(() => {
     const s = new Set<string>(QUARTERS);
@@ -173,19 +175,22 @@ export default function KpiPage() {
   }, [activeTasks]);
 
   const byAssignee = useMemo(() => {
-    const map = new Map<string, { total: number; done: number; overdue: number }>();
+    const m = new Map<string, { total: number; done: number; overdue: number }>();
     activeTasks.forEach((t) => {
-      const key = t.assignee?.trim() || "— не назначен —";
-      const e = map.get(key) ?? { total: 0, done: 0, overdue: 0 };
+      // Prefer the registered user's display_name; fall back to legacy text.
+      const fromMap = t.assignee_id ? userMap.get(t.assignee_id) ?? null : null;
+      const resolved = fromMap || t.assignee?.trim() || "";
+      const key = resolved || "— не назначен —";
+      const e = m.get(key) ?? { total: 0, done: 0, overdue: 0 };
       e.total += 1;
       if (t.status === "completed") e.done += 1;
       if (t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed") e.overdue += 1;
-      map.set(key, e);
+      m.set(key, e);
     });
-    return Array.from(map.entries())
+    return Array.from(m.entries())
       .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.total - a.total);
-  }, [activeTasks]);
+  }, [activeTasks, userMap]);
 
   // ── Burn-down по выбранному кварталу ────────────────────────────
   const burnDown = useMemo(() => {
@@ -477,11 +482,16 @@ export default function KpiPage() {
                       <Pencil className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-12" />
                     </button>
                   </div>
-                  {(dir || k.quarter || k.owner) && (
-                    <p className="mb-3 text-xs text-muted-foreground">
-                      {[dir?.name, k.quarter, k.owner].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
+                  {(() => {
+                    const ownerName = k.owner_id ? userMap.get(k.owner_id) : null;
+                    const ownerLabel = ownerName ?? k.owner;
+                    if (!dir && !k.quarter && !ownerLabel) return null;
+                    return (
+                      <p className="mb-3 text-xs text-muted-foreground">
+                        {[dir?.name, k.quarter, ownerLabel].filter(Boolean).join(" · ")}
+                      </p>
+                    );
+                  })()}
                   <div className="flex items-baseline gap-1">
                     <AnimatedNumber value={k.current_value} className="text-2xl font-semibold tabular-nums" />
                     <span className="text-sm text-muted-foreground">

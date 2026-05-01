@@ -26,6 +26,7 @@ import { Target, Plus } from "lucide-react";
 import { useQuarters, useCreateQuarter, useDeleteQuarter, useToggleEntityTag } from "@/hooks/useTaxonomies";
 import { EditableSelect } from "@/components/EditableSelect";
 import { TagPicker } from "@/components/TagPicker";
+import { UserPicker } from "@/components/UserPicker";
 
 interface Props {
   open: boolean;
@@ -244,7 +245,11 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
             </div>
             <div className="grid gap-1.5">
               <Label>Ответственный</Label>
-              <Input value={form.assignee ?? ""} onChange={(e) => set("assignee", e.target.value)} placeholder="Иван" />
+              <UserPicker
+                value={form.assignee_id ?? null}
+                onChange={(id) => set("assignee_id", id)}
+                placeholder="Не назначен"
+              />
             </div>
 
             <div className="grid gap-1.5">

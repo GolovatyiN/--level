@@ -17,6 +17,7 @@ import {
 } from "@/hooks/useKpiActivity";
 import { format, parseISO } from "date-fns";
 import { STATUSES } from "@/lib/constants";
+import { MentionTextarea } from "@/components/MentionTextarea";
 
 export interface KpiActivityHandle {
   /** Commit any unsubmitted drafts (progress, comments). Called when the main "Сохранить" runs. */
@@ -298,11 +299,17 @@ const Comments = forwardRef<FlushHandle, { kpiId: string }>(function Comments({ 
   const add = useAddKpiComment();
   const del = useDeleteKpiComment();
   const [text, setText] = useState("");
+  const [mentions, setMentions] = useState<string[]>([]);
 
   const submit = async () => {
     if (!text.trim()) return;
-    await add.mutateAsync({ kpi_id: kpiId, content: text.trim() });
+    await add.mutateAsync({
+      kpi_id: kpiId,
+      content: text.trim(),
+      mentioned_user_ids: mentions,
+    });
     setText("");
+    setMentions([]);
   };
 
   // Expose flush so the dialog's main "Сохранить" can persist a typed-but-
@@ -317,11 +324,12 @@ const Comments = forwardRef<FlushHandle, { kpiId: string }>(function Comments({ 
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-        <Textarea
+        <MentionTextarea
           rows={3}
-          placeholder="Комментарий, решение, контекст... (⌘+Enter — отправить)"
+          placeholder="Комментарий, @упомяните коллегу... (⌘+Enter — отправить)"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={setText}
+          onMentionsChange={setMentions}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
               e.preventDefault();
@@ -332,6 +340,11 @@ const Comments = forwardRef<FlushHandle, { kpiId: string }>(function Comments({ 
         <Button size="sm" onClick={submit} disabled={!text.trim() || add.isPending} className="w-full">
           {add.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1 h-3.5 w-3.5" />}
           Добавить комментарий
+          {mentions.length > 0 && (
+            <span className="ml-1 rounded-full bg-primary-foreground/20 px-1.5 text-[10px] tabular-nums">
+              @{mentions.length}
+            </span>
+          )}
         </Button>
       </div>
 

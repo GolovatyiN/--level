@@ -2,6 +2,7 @@ import { Calendar, ExternalLink } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 import { Task } from "@/hooks/useTasks";
 import { Direction } from "@/hooks/useDirections";
+import { useUserMap } from "@/hooks/useUsers";
 import { PriorityBadge } from "./StatusBadge";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,8 @@ interface Props {
 
 export function TaskCard({ task, direction, onClick, isDragging }: Props) {
   const overdue = task.deadline && isPast(parseISO(task.deadline)) && task.status !== "completed";
+  const { map: userMap } = useUserMap();
+  const assigneeName = task.assignee_id ? userMap.get(task.assignee_id) ?? null : task.assignee;
   return (
     <div
       onClick={onClick}
@@ -63,8 +66,8 @@ export function TaskCard({ task, direction, onClick, isDragging }: Props) {
               </a>
             )}
           </div>
-          {task.assignee && (
-            <p className="mt-2 truncate text-[11px] text-muted-foreground">@ {task.assignee}</p>
+          {assigneeName && (
+            <p className="mt-2 truncate text-[11px] text-muted-foreground">@ {assigneeName}</p>
           )}
         </div>
       </div>

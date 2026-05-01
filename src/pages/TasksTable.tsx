@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { TaskFilters, applyFilters, initialFilters, FiltersState } from "@/components/TaskFilters";
 import { useTasks, Task } from "@/hooks/useTasks";
 import { useDirections } from "@/hooks/useDirections";
+import { useUserMap } from "@/hooks/useUsers";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TaskDialog } from "@/components/TaskDialog";
 import { StatusBadge, PriorityBadge } from "@/components/StatusBadge";
@@ -13,6 +14,7 @@ import { format, parseISO } from "date-fns";
 export default function TasksTable() {
   const { data: tasks = [], isLoading } = useTasks();
   const { data: directions = [] } = useDirections();
+  const { map: userMap } = useUserMap();
   const [filters, setFilters] = useState<FiltersState>(initialFilters);
   const [editing, setEditing] = useState<Task | null>(null);
 
@@ -61,7 +63,9 @@ export default function TasksTable() {
                     <TableCell><PriorityBadge priority={t.priority} /></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{t.deadline ? format(parseISO(t.deadline), "dd.MM.yyyy") : "—"}</TableCell>
                     <TableCell><StatusBadge status={t.status} /></TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{t.assignee ?? "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {(t.assignee_id ? userMap.get(t.assignee_id) : null) ?? t.assignee ?? "—"}
+                    </TableCell>
                     <TableCell>
                       {t.asana_url ? (
                         <a href={t.asana_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center text-primary hover:text-primary-glow">

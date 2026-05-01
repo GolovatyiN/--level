@@ -11,7 +11,10 @@ export type Kpi = {
   target_value: number;
   current_value: number;
   unit: string;
+  /** Legacy free-text owner. Preserved for backward compatibility. */
   owner: string | null;
+  /** New: FK to auth.users.id. When set, takes priority over `owner`. */
+  owner_id: string | null;
   deadline: string | null;
   created_at: string;
   updated_at: string;

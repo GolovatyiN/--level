@@ -22,6 +22,7 @@ import { KpiActivity, type KpiActivityHandle } from "@/components/KpiActivity";
 import { useQuarters, useCreateQuarter, useDeleteQuarter, useKpiUnits, useCreateKpiUnit, useDeleteKpiUnit } from "@/hooks/useTaxonomies";
 import { EditableSelect } from "@/components/EditableSelect";
 import { TagPicker } from "@/components/TagPicker";
+import { UserPicker } from "@/components/UserPicker";
 
 interface Props {
   open: boolean;
@@ -183,7 +184,11 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
             </div>
             <div className="grid gap-1.5">
               <Label>Ответственный</Label>
-              <Input value={form.owner ?? ""} onChange={(e) => set("owner", e.target.value)} />
+              <UserPicker
+                value={form.owner_id ?? null}
+                onChange={(id) => set("owner_id", id)}
+                placeholder="Не назначен"
+              />
             </div>
 
             <div className="grid gap-1.5">

@@ -13,7 +13,10 @@ export type Task = {
   priority: TaskPriority;
   status: TaskStatus;
   deadline: string | null;
+  /** Legacy free-text assignee. Kept for backwards compatibility. */
   assignee: string | null;
+  /** New: FK to auth.users.id. When set, takes priority over `assignee`. */
+  assignee_id: string | null;
   asana_url: string | null;
   notes: string | null;
   archived: boolean;
