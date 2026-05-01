@@ -38,6 +38,9 @@ export function useUpsertKpi() {
       const { data: u } = await supabase.auth.getUser();
       const payload: any = { ...input };
       if (!input.id) payload.created_by = u.user?.id;
+      // Don't send the new owner_id column when empty — keeps create/update
+      // working even if the migration hasn't been applied yet.
+      if (payload.owner_id == null) delete payload.owner_id;
       const { data, error } = await supabase.from("kpis").upsert(payload).select().single();
       if (error) throw error;
       return data;
