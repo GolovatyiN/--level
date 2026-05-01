@@ -170,7 +170,7 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
                 value={form.unit ?? ""}
                 onValueChange={(v) => set("unit", v)}
                 options={units.map((u) => ({ value: u.symbol, label: u.symbol + (u.description ? ` — ${u.description}` : "") }))}
-                placeholder="%, шт, $..."
+                placeholder="%, шт, ч..."
                 createLabel="Новая единица (например: clicks)"
                 onCreate={async (symbol) => {
                   const u = await createUnit.mutateAsync(symbol);
