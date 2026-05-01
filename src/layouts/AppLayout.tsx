@@ -12,13 +12,19 @@ import {
   ShieldCheck,
   Menu,
   X,
+  Search,
+  AlertTriangle,
 } from "lucide-react";
+import { isPast, parseISO } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsSuperadmin } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TaskDialog } from "@/components/TaskDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { CommandPalette } from "@/components/CommandPalette";
+import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
+import { useTasks } from "@/hooks/useTasks";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -36,9 +42,26 @@ export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [openCreate, setOpenCreate] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isSuper = useIsSuperadmin();
   const nav = isSuper ? [...NAV, { to: "/admin", label: "Админка", icon: ShieldCheck }] : NAV;
+
+  // Overdue task badge — visible reminder in the sidebar.
+  const { data: tasks = [] } = useTasks();
+  const overdueCount = useMemo(
+    () =>
+      tasks.filter(
+        (t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed",
+      ).length,
+    [tasks],
+  );
+
+  // Wire up app-wide keyboard shortcuts.
+  useGlobalShortcuts({
+    onOpenPalette: () => setPaletteOpen(true),
+    onNewTask: () => setOpenCreate(true),
+  });
 
   // Close the mobile drawer on navigation
   useEffect(() => {
@@ -74,9 +97,24 @@ export function AppLayout() {
         </Button>
       </div>
 
-      <div className="px-3">
+      <div className="space-y-1.5 px-3">
         <Button onClick={() => setOpenCreate(true)} className="w-full justify-start gap-2" size="sm">
           <Plus className="h-4 w-4" /> Новая задача
+          <kbd className="ml-auto rounded border border-primary-foreground/20 bg-primary-foreground/10 px-1.5 py-px text-[10px] font-mono text-primary-foreground/70">
+            N
+          </kbd>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPaletteOpen(true)}
+          className="w-full justify-start gap-2 text-muted-foreground"
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span className="text-xs">Поиск...</span>
+          <kbd className="ml-auto rounded border border-border bg-muted px-1.5 py-px text-[10px] font-mono">
+            ⌘K
+          </kbd>
         </Button>
       </div>
 
@@ -119,6 +157,21 @@ export function AppLayout() {
       </nav>
 
       <div className="space-y-1 border-t border-sidebar-border p-3">
+        {overdueCount > 0 && (
+          <button
+            type="button"
+            onClick={() => navigate("/?status=overdue")}
+            className="flex w-full animate-fade-in items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/10"
+            title={`${overdueCount} задач просрочено`}
+          >
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+            </span>
+            <AlertTriangle className="h-3.5 w-3.5" />
+            <span className="font-medium">{overdueCount} просрочено</span>
+          </button>
+        )}
         <ThemeToggle />
         <div className="mt-1 truncate px-2 pt-1 text-xs text-muted-foreground" title={user?.email ?? undefined}>
           {user?.email}
@@ -176,6 +229,16 @@ export function AppLayout() {
             </div>
             <span className="text-sm font-semibold">Company Hub</span>
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="ml-auto h-9 w-9"
+            onClick={() => setPaletteOpen(true)}
+            aria-label="Поиск (⌘K)"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
         </header>
 
         <main className="min-w-0 flex-1">
@@ -184,6 +247,7 @@ export function AppLayout() {
       </div>
 
       <TaskDialog open={openCreate} onOpenChange={setOpenCreate} />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
   );
 }

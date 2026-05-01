@@ -1,4 +1,4 @@
-import { Calendar, ExternalLink, GripVertical } from "lucide-react";
+import { Calendar, ExternalLink } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 import { Task } from "@/hooks/useTasks";
 import { Direction } from "@/hooks/useDirections";
@@ -9,11 +9,10 @@ interface Props {
   task: Task;
   direction?: Direction;
   onClick?: () => void;
-  dragHandle?: React.HTMLAttributes<HTMLButtonElement>;
   isDragging?: boolean;
 }
 
-export function TaskCard({ task, direction, onClick, dragHandle, isDragging }: Props) {
+export function TaskCard({ task, direction, onClick, isDragging }: Props) {
   const overdue = task.deadline && isPast(parseISO(task.deadline)) && task.status !== "completed";
   return (
     <div
@@ -32,18 +31,7 @@ export function TaskCard({ task, direction, onClick, dragHandle, isDragging }: P
           />
         )}
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <h4 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">{task.title}</h4>
-            {dragHandle && (
-              <button
-                {...dragHandle}
-                onClick={(e) => e.stopPropagation()}
-                className="opacity-0 transition group-hover:opacity-100 cursor-grab active:cursor-grabbing"
-              >
-                <GripVertical className="h-4 w-4 text-muted-foreground" />
-              </button>
-            )}
-          </div>
+          <h4 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">{task.title}</h4>
           {direction && (
             <p className="mt-0.5 text-xs text-muted-foreground">{direction.name}</p>
           )}

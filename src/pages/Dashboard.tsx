@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { useTasks } from "@/hooks/useTasks";
 import { useDirections } from "@/hooks/useDirections";
@@ -31,6 +32,15 @@ export default function Dashboard() {
   const [quarter, setQuarter] = useState<string>("all");
   const [direction, setDirection] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  // Honor `?status=overdue` etc. so deep links (e.g. the sidebar overdue
+  // pill) land on a pre-filtered view.
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const s = searchParams.get("status");
+    const valid: StatusFilter[] = ["all", "active", "in_progress", "at_risk", "blocked", "completed", "overdue"];
+    if (s && (valid as string[]).includes(s)) setStatusFilter(s as StatusFilter);
+  }, [searchParams]);
 
   // "Base" = quarter + direction filters only. Status counts are computed
   // off this so toggling a status card doesn't change the totals — clicking
