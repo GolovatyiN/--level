@@ -63,14 +63,28 @@ async function logHistory(taskId: string, eventType: string, description: string
   });
 }
 
+/**
+ * Strip optional fields that map to columns added by recent migrations,
+ * but only when they have no value. This way the basic create/update
+ * flows still work against a Supabase that hasn't yet applied the
+ * `user_assignments_and_notifications` migration; setting an actual user
+ * is the only path that requires the column to exist.
+ */
+function stripUnreadyTaskFields<T extends Partial<Task>>(input: T): T {
+  const out: any = { ...input };
+  if (out.assignee_id == null) delete out.assignee_id;
+  return out;
+}
+
 export function useCreateTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Partial<Task> & { title: string; quarter: string }) => {
       const { data: u } = await supabase.auth.getUser();
+      const payload = stripUnreadyTaskFields(input);
       const { data, error } = await supabase
         .from("tasks")
-        .insert({ ...input, created_by: u.user?.id } as any)
+        .insert({ ...payload, created_by: u.user?.id } as any)
         .select()
         .single();
       if (error) throw error;
@@ -89,9 +103,10 @@ export function useUpdateTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch, prev }: { id: string; patch: Partial<Task>; prev?: Task }) => {
+      const cleanPatch = stripUnreadyTaskFields(patch);
       const { data, error } = await supabase
         .from("tasks")
-        .update(patch as any)
+        .update(cleanPatch as any)
         .eq("id", id)
         .select()
         .single();

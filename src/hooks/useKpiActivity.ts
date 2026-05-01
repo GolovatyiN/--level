@@ -72,14 +72,20 @@ export function useAddKpiComment() {
         const { data: p } = await supabase.from("profiles").select("display_name").eq("user_id", u.user.id).maybeSingle();
         if (p?.display_name) author_name = p.display_name;
       }
-      const { error } = await supabase.from("kpi_comments" as any).insert({
+      const payload: any = {
         kpi_id,
         content,
         author_id: u.user?.id ?? null,
         author_name,
-        // The DB trigger reads this column to fan out notifications.
-        mentioned_user_ids: mentioned_user_ids ?? [],
-      } as any);
+      };
+      // Only attach mentioned_user_ids when there's at least one — the
+      // DB column was added by a later migration, and omitting the field
+      // when empty keeps comments saving even if that migration hasn't
+      // yet been applied to the live Supabase.
+      if (mentioned_user_ids && mentioned_user_ids.length > 0) {
+        payload.mentioned_user_ids = mentioned_user_ids;
+      }
+      const { error } = await supabase.from("kpi_comments" as any).insert(payload);
       if (error) throw error;
     },
     onSuccess: (_d, v) => {
