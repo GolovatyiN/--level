@@ -24,11 +24,17 @@ export type Notification = {
   created_at: string;
 };
 
+/**
+ * Just the react-query side. Safe to call from many components — they all
+ * share the same cache key. Does NOT subscribe to realtime; that's done
+ * exactly once via {@link useNotificationsRealtime} mounted at the app
+ * root, otherwise multiple consumers race each other on the same channel
+ * name and Supabase rejects "cannot add postgres_changes callbacks ... after
+ * subscribe()".
+ */
 export function useNotifications(limit = 50) {
   const { user } = useAuth();
-  const qc = useQueryClient();
-
-  const query = useQuery({
+  return useQuery({
     queryKey: ["notifications", user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -38,37 +44,82 @@ export function useNotifications(limit = 50) {
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(limit);
-      if (error) throw error;
+      if (error) {
+        // Table missing (migration not yet applied) — fail soft so the bell
+        // and the rest of the UI keep working.
+        if ((error as any).code === "42P01" || /not found|relation/i.test(error.message)) {
+          return [];
+        }
+        throw error;
+      }
       return (data ?? []) as unknown as Notification[];
     },
   });
+}
 
-  // Realtime: when a new notification lands, show a tiny toast and refresh.
+/**
+ * Mount once at the app root. Subscribes to INSERTs on the user's
+ * notifications, surfaces a toast for each, and invalidates the cache so
+ * any open bell repaints.
+ *
+ * Implementation notes:
+ * - Channel name includes a per-mount random suffix. Supabase caches
+ *   channels by name; reusing a name across mounts (React Strict Mode
+ *   double-effect, hot reloads, route remounts) causes
+ *   "cannot add postgres_changes callbacks ... after subscribe()" because
+ *   the cached channel is already in subscribed state when we try to add
+ *   listeners. A fresh name per mount sidesteps the cache entirely.
+ * - We also defensively no-op if `.on()`/`.subscribe()` throws so a
+ *   transient setup failure can't crash the page.
+ */
+export function useNotificationsRealtime() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
-      .channel(`notifications:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const n = payload.new as Notification;
-          toast(n.title, { description: n.body ?? undefined });
-          qc.invalidateQueries({ queryKey: ["notifications", user.id] });
-        },
-      )
-      .subscribe();
+    let cancelled = false;
+    const suffix = Math.random().toString(36).slice(2, 10);
+    const channelName = `notifications:${user.id}:${suffix}`;
+
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    try {
+      channel = supabase
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            if (cancelled) return;
+            const n = payload.new as Notification;
+            toast(n.title, { description: n.body ?? undefined });
+            qc.invalidateQueries({ queryKey: ["notifications", user.id] });
+          },
+        )
+        .subscribe();
+    } catch (err) {
+      // Realtime is best-effort — a setup failure shouldn't break the app.
+      // The user will still see notifications on the next refresh / poll.
+      // eslint-disable-next-line no-console
+      console.warn("notifications realtime subscribe failed", err);
+    }
+
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {
+          // ignore
+        }
+      }
     };
   }, [user, qc]);
-
-  return query;
 }
 
 export function useUnreadCount() {
