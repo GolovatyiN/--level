@@ -23,6 +23,7 @@ import { useEffect, useMemo, useState } from "react";
 import { TaskDialog } from "@/components/TaskDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CommandPalette } from "@/components/CommandPalette";
+import { NotificationsBell } from "@/components/NotificationsBell";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 import { useTasks } from "@/hooks/useTasks";
 import { cn } from "@/lib/utils";
@@ -172,6 +173,7 @@ export function AppLayout() {
             <span className="font-medium">{overdueCount} просрочено</span>
           </button>
         )}
+        <NotificationsBell />
         <ThemeToggle />
         <div className="mt-1 truncate px-2 pt-1 text-xs text-muted-foreground" title={user?.email ?? undefined}>
           {user?.email}

@@ -57,7 +57,15 @@ export function useKpiComments(kpiId?: string | null) {
 export function useAddKpiComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ kpi_id, content }: { kpi_id: string; content: string }) => {
+    mutationFn: async ({
+      kpi_id,
+      content,
+      mentioned_user_ids,
+    }: {
+      kpi_id: string;
+      content: string;
+      mentioned_user_ids?: string[];
+    }) => {
       const { data: u } = await supabase.auth.getUser();
       let author_name: string | null = u.user?.email ?? null;
       if (u.user?.id) {
@@ -69,6 +77,8 @@ export function useAddKpiComment() {
         content,
         author_id: u.user?.id ?? null,
         author_name,
+        // The DB trigger reads this column to fan out notifications.
+        mentioned_user_ids: mentioned_user_ids ?? [],
       } as any);
       if (error) throw error;
     },
