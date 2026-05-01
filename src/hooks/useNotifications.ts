@@ -24,11 +24,17 @@ export type Notification = {
   created_at: string;
 };
 
+/**
+ * Just the react-query side. Safe to call from many components — they all
+ * share the same cache key. Does NOT subscribe to realtime; that's done
+ * exactly once via {@link useNotificationsRealtime} mounted at the app
+ * root, otherwise multiple consumers race each other on the same channel
+ * name and Supabase rejects "cannot add postgres_changes callbacks ... after
+ * subscribe()".
+ */
 export function useNotifications(limit = 50) {
   const { user } = useAuth();
-  const qc = useQueryClient();
-
-  const query = useQuery({
+  return useQuery({
     queryKey: ["notifications", user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -38,14 +44,32 @@ export function useNotifications(limit = 50) {
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(limit);
-      if (error) throw error;
+      if (error) {
+        // Table missing (migration not yet applied) — fail soft so the bell
+        // and the rest of the UI keep working.
+        if ((error as any).code === "42P01" || /not found|relation/i.test(error.message)) {
+          return [];
+        }
+        throw error;
+      }
       return (data ?? []) as unknown as Notification[];
     },
   });
+}
 
-  // Realtime: when a new notification lands, show a tiny toast and refresh.
+/**
+ * Mount once at the app root. Subscribes to INSERTs on the user's
+ * notifications, surfaces a toast for each, and invalidates the cache so
+ * any open bell repaints. Idempotent on re-renders thanks to the channel
+ * cleanup.
+ */
+export function useNotificationsRealtime() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     const channel = supabase
       .channel(`notifications:${user.id}`)
       .on(
@@ -57,6 +81,7 @@ export function useNotifications(limit = 50) {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
+          if (cancelled) return;
           const n = payload.new as Notification;
           toast(n.title, { description: n.body ?? undefined });
           qc.invalidateQueries({ queryKey: ["notifications", user.id] });
@@ -64,11 +89,10 @@ export function useNotifications(limit = 50) {
       )
       .subscribe();
     return () => {
+      cancelled = true;
       supabase.removeChannel(channel);
     };
   }, [user, qc]);
-
-  return query;
 }
 
 export function useUnreadCount() {

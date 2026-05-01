@@ -25,6 +25,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
+import { useNotificationsRealtime } from "@/hooks/useNotifications";
 import { useTasks } from "@/hooks/useTasks";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +64,10 @@ export function AppLayout() {
     onOpenPalette: () => setPaletteOpen(true),
     onNewTask: () => setOpenCreate(true),
   });
+
+  // Single realtime subscription for the whole app — keeps `useNotifications`
+  // (called by NotificationsBell + useUnreadCount) free of side effects.
+  useNotificationsRealtime();
 
   // Close the mobile drawer on navigation
   useEffect(() => {
