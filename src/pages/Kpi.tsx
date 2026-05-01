@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Target, AlertTriangle, Users, TrendingUp, X } from "lucide-react";
@@ -11,6 +11,7 @@ import { QUARTERS, currentQuarter } from "@/lib/constants";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { isPast, parseISO, eachDayOfInterval, startOfQuarter, endOfQuarter, format } from "date-fns";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { Confetti } from "@/components/Confetti";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
 
 export default function KpiPage() {
@@ -39,6 +40,32 @@ export default function KpiPage() {
       setEditingKpi(fresh);
     }
   }, [kpis, editingKpi]);
+
+  // 🎉 Confetti when any KPI just crossed the 100% mark. We track the last-
+  // seen percent for each KPI; when it transitions from <100 to >=100 we
+  // bump a trigger counter (mounted Confetti listens to it). First load
+  // doesn't fire — we initialise the cache before checking.
+  const lastPctRef = useRef<Record<string, number>>({});
+  const initRef = useRef(false);
+  const [confettiTick, setConfettiTick] = useState(0);
+  useEffect(() => {
+    const next: Record<string, number> = {};
+    let crossed = false;
+    kpis.forEach((k) => {
+      const pct = k.target_value ? (k.current_value / k.target_value) * 100 : 0;
+      next[k.id] = pct;
+      const prev = lastPctRef.current[k.id];
+      if (initRef.current && prev !== undefined && prev < 100 && pct >= 100) {
+        crossed = true;
+      }
+    });
+    lastPctRef.current = next;
+    if (!initRef.current) {
+      initRef.current = true;
+      return;
+    }
+    if (crossed) setConfettiTick((t) => t + 1);
+  }, [kpis]);
   const [directionFilter, setDirectionFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
@@ -499,6 +526,7 @@ export default function KpiPage() {
       </div>
       <KpiDialog open={creating} onOpenChange={setCreating} />
       <KpiDialog open={!!editingKpi} onOpenChange={(v) => !v && setEditingKpi(null)} kpi={editingKpi} />
+      <Confetti trigger={confettiTick} />
     </>
   );
 }
