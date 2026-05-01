@@ -30,3 +30,9 @@ dist-ssr
 tsconfig.app.tsbuildinfo
 tsconfig.node.tsbuildinfo
 *.tsbuildinfo
+
+# Supabase CLI — local-only state. The link metadata under .temp/ contains
+# the project ref (public) but never the access token; the token lives in
+# ~/.supabase/access-token, outside the repo.
+supabase/.temp/
+supabase/.branches/
