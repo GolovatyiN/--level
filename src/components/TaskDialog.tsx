@@ -278,7 +278,7 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
 
           <div className="rounded-md border border-border bg-muted/30 p-3">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-              <Target className="h-3.5 w-3.5" /> Связанные KPI
+              <Target className="h-3.5 w-3.5" /> Связанные цели
             </div>
             {task ? (
               links.length > 0 && (
@@ -350,7 +350,7 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
             {availableKpis.length > 0 ? (
               <div className="flex items-center gap-2">
                 <Select value={newKpiId} onValueChange={setNewKpiId}>
-                  <SelectTrigger className="h-7 flex-1 text-xs"><SelectValue placeholder="+ привязать KPI" /></SelectTrigger>
+                  <SelectTrigger className="h-7 flex-1 text-xs"><SelectValue placeholder="+ привязать цель" /></SelectTrigger>
                   <SelectContent>
                     {availableKpis.map((k) => (
                       <SelectItem key={k.id} value={k.id}>{k.name}</SelectItem>
@@ -372,7 +372,7 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
               <p className="text-xs text-muted-foreground">Все KPI уже привязаны.</p>
             )}
             <p className="mt-2 text-xs text-muted-foreground">
-              Когда статус задачи станет «Завершено», вклад автоматически прибавится к факту KPI.
+              Когда статус задачи станет «Завершено», вклад автоматически прибавится к факту цели.
             </p>
           </div>
 

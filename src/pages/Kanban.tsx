@@ -100,7 +100,7 @@ export default function Kanban() {
 
   return (
     <>
-      <PageHeader title="Kanban" description="Перемещайте задачи между колонками" />
+      <PageHeader title="Канбан" description="Перемещайте задачи между колонками" />
       <TaskFilters value={filters} onChange={setFilters} hideStatus />
       {isLoading && tasks.length === 0 && (
         <p className="px-4 pt-3 text-xs text-muted-foreground sm:px-8">Загрузка...</p>

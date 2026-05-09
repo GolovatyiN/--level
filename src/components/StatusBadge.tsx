@@ -25,10 +25,10 @@ export function StatusBadge({ status, className }: { status: TaskStatus; classNa
 
 export function PriorityBadge({ priority, className }: { priority: import("@/lib/constants").TaskPriority; className?: string }) {
   const map = {
-    low: { label: "Low", color: "priority-low" },
-    medium: { label: "Medium", color: "priority-medium" },
-    high: { label: "High", color: "priority-high" },
-    critical: { label: "Critical", color: "priority-critical" },
+    low: { label: "Низкий", color: "priority-low" },
+    medium: { label: "Средний", color: "priority-medium" },
+    high: { label: "Высокий", color: "priority-high" },
+    critical: { label: "Критический", color: "priority-critical" },
   } as const;
   const p = map[priority];
   return (

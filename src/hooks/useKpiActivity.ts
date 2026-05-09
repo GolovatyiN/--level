@@ -156,7 +156,7 @@ export function useLinkKpiTask() {
       qc.invalidateQueries({ queryKey: ["kpi_tasks", v.kpi_id] });
       qc.invalidateQueries({ queryKey: ["task_kpis", v.task_id] });
       qc.invalidateQueries({ queryKey: ["kpis"] });
-      toast.success("Задача привязана к KPI");
+      toast.success("Задача привязана к цели");
     },
     onError: (e: any) => toast.error(e.message),
   });

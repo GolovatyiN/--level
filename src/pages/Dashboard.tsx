@@ -82,7 +82,7 @@ export default function Dashboard() {
   return (
     <>
       <PageHeader
-        title="Дашборд"
+        title="Панель управления"
         description="Общая картина по задачам компании"
         actions={
           <>

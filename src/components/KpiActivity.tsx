@@ -127,7 +127,7 @@ const LinkedTasks = forwardRef<FlushHandle, { kpiId: string; unit: string }>(fun
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Привязывайте задачи к KPI в карточке задачи. Завершённая задача автоматически прибавляет свой «вклад» к факту KPI.
+        Привязывайте задачи к цели в карточке задачи. Завершённая задача автоматически прибавляет свой «вклад» к факту цели.
       </p>
       {links.length === 0 ? (
         <p className="py-4 text-center text-xs text-muted-foreground">Нет связанных задач</p>
