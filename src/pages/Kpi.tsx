@@ -233,9 +233,9 @@ export default function KpiPage() {
   const kpiStatus = (k: Kpi) => {
     const pct = kpiProgress(k);
     if (pct >= 100) return { label: "Достигнуто", color: "status-completed" };
-    if (pct >= 70) return { label: "On track", color: "status-progress" };
-    if (pct >= 40) return { label: "At risk", color: "status-risk" };
-    return { label: "Off track", color: "status-blocked" };
+    if (pct >= 70) return { label: "В графике", color: "status-progress" };
+    if (pct >= 40) return { label: "Под риском", color: "status-risk" };
+    return { label: "Отстаёт", color: "status-blocked" };
   };
 
   const stats = [
@@ -248,7 +248,7 @@ export default function KpiPage() {
   return (
     <>
       <PageHeader
-        title="KPI"
+        title="Цели"
         description="Метрики, цели и прогресс компании"
         actions={
           <>
@@ -258,7 +258,7 @@ export default function KpiPage() {
                 {quarterList.map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button size="sm" onClick={() => setCreating(true)}><Plus className="mr-1 h-4 w-4" /> KPI</Button>
+            <Button size="sm" onClick={() => setCreating(true)}><Plus className="mr-1 h-4 w-4" /> Цель</Button>
           </>
         }
       />
@@ -341,8 +341,8 @@ export default function KpiPage() {
         {/* Burn-down */}
         <section className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4">
-            <h3 className="text-sm font-semibold">Burn-down — {quarter}</h3>
-            <p className="text-xs text-muted-foreground">Идеальный темп vs фактически осталось задач</p>
+            <h3 className="text-sm font-semibold">График выполнения — {quarter}</h3>
+            <p className="text-xs text-muted-foreground">Идеальный темп против фактически осталось задач</p>
           </div>
           {burnDown.length ? (
             <div className="h-64">
@@ -518,11 +518,11 @@ export default function KpiPage() {
                 <p className="mb-4 text-sm text-muted-foreground">
                   {kpis.length === 0
                     ? "Создайте первую цель — задайте план и факт"
-                    : "Под выбранные фильтры KPI не найдены"}
+                    : "Под выбранные фильтры цели не найдены"}
                 </p>
                 {kpis.length === 0 ? (
                   <Button onClick={() => setCreating(true)}>
-                    <Plus className="mr-1 h-4 w-4" /> Создать KPI
+                    <Plus className="mr-1 h-4 w-4" /> Создать цель
                   </Button>
                 ) : (
                   <Button variant="outline" onClick={resetFilters}>

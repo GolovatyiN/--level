@@ -12,10 +12,10 @@ export const STATUSES: { value: TaskStatus; label: string; colorVar: string }[] 
 ];
 
 export const PRIORITIES: { value: TaskPriority; label: string; colorVar: string }[] = [
-  { value: "low", label: "Low", colorVar: "priority-low" },
-  { value: "medium", label: "Medium", colorVar: "priority-medium" },
-  { value: "high", label: "High", colorVar: "priority-high" },
-  { value: "critical", label: "Critical", colorVar: "priority-critical" },
+  { value: "low", label: "Низкий", colorVar: "priority-low" },
+  { value: "medium", label: "Средний", colorVar: "priority-medium" },
+  { value: "high", label: "Высокий", colorVar: "priority-high" },
+  { value: "critical", label: "Критический", colorVar: "priority-critical" },
 ];
 
 export const statusLabel = (s: TaskStatus) => STATUSES.find((x) => x.value === s)?.label ?? s;

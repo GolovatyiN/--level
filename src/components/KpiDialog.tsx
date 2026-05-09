@@ -94,7 +94,7 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={kpi ? "max-w-3xl" : "max-w-xl"}>
-        <DialogHeader><DialogTitle>{kpi ? "Редактировать KPI" : "Новый KPI"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{kpi ? "Редактировать цель" : "Новая цель"}</DialogTitle></DialogHeader>
         <div className={kpi ? "grid gap-6 md:grid-cols-2" : "grid gap-4"}>
           <div className="grid gap-4">
           <div className="grid gap-1.5">
@@ -238,9 +238,9 @@ export function KpiDialog({ open, onOpenChange, kpi }: Props) {
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Удалить KPI?</AlertDialogTitle>
+            <AlertDialogTitle>Удалить цель?</AlertDialogTitle>
             <AlertDialogDescription>
-              KPI «{kpi?.name}» будет удалён вместе с историей прогресса и связями. Это действие нельзя отменить.
+              Цель «{kpi?.name}» будет удалена вместе с историей прогресса и связями. Это действие нельзя отменить.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

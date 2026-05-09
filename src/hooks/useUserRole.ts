@@ -21,12 +21,12 @@ export const ROLE_ORDER: AppRole[] = [
 ];
 
 export const ROLE_LABELS: Record<AppRole, string> = {
-  superadmin: "Super Admin",
-  admin: "Admin",
+  superadmin: "Супер-админ",
+  admin: "Админ",
   department_head: "Руководитель отдела",
-  manager: "Manager",
-  viewer: "Viewer",
-  user: "User",
+  manager: "Менеджер",
+  viewer: "Наблюдатель",
+  user: "Пользователь",
 };
 
 /**

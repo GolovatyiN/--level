@@ -47,7 +47,7 @@ export function useUpsertKpi() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["kpis"] });
-      toast.success("KPI сохранён");
+      toast.success("Цель сохранена");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -62,7 +62,7 @@ export function useDeleteKpi() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["kpis"] });
-      toast.success("KPI удалён");
+      toast.success("Цель удалена");
     },
     onError: (e: any) => toast.error(e.message),
   });

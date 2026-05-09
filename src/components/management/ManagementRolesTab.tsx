@@ -25,7 +25,7 @@ const CAPS: Capability[] = [
   { key: "manage_departments", label: "Управление отделами" },
   { key: "manage_roles",     label: "Назначение ролей" },
   { key: "department_scope", label: "Доступ ограничен отделами" },
-  { key: "audit_log",        label: "История изменений" },
+  { key: "audit_log",        label: "Журнал действий" },
 ];
 
 const MATRIX: Record<AppRole, Set<string>> = {

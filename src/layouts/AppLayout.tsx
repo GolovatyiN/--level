@@ -31,11 +31,11 @@ import { useTasks } from "@/hooks/useTasks";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "Дашборд", icon: LayoutDashboard, end: true },
-  { to: "/roadmap", label: "Roadmap", icon: Map },
-  { to: "/kanban", label: "Kanban", icon: Columns3 },
+  { to: "/", label: "Панель управления", icon: LayoutDashboard, end: true },
+  { to: "/roadmap", label: "Дорожная карта", icon: Map },
+  { to: "/kanban", label: "Канбан", icon: Columns3 },
   { to: "/table", label: "Таблица", icon: Table2 },
-  { to: "/kpi", label: "KPI", icon: Target },
+  { to: "/kpi", label: "Цели", icon: Target },
   { to: "/directions", label: "Отделы", icon: Layers },
   { to: "/archive", label: "Архив", icon: Archive },
 ];
@@ -51,7 +51,7 @@ export function AppLayout() {
   const canManage = useCanManage();
   const nav = [
     ...NAV,
-    ...(canManage ? [{ to: "/management", label: "Менеджмент", icon: Settings2 }] : []),
+    ...(canManage ? [{ to: "/management", label: "Управление", icon: Settings2 }] : []),
     ...(isSuper ? [{ to: "/admin", label: "Админка", icon: ShieldCheck }] : []),
   ];
 
@@ -94,7 +94,7 @@ export function AppLayout() {
           </div>
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-semibold text-sidebar-foreground">Company Hub</span>
-            <span className="text-[10px] text-muted-foreground">Roadmap & Tasks</span>
+            <span className="text-[10px] text-muted-foreground">Дорожная карта и задачи</span>
           </div>
         </div>
         <Button

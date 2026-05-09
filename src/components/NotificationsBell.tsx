@@ -119,7 +119,7 @@ export function NotificationsBell() {
               <BellOff className="h-6 w-6 text-muted-foreground" />
               <p className="text-sm font-medium text-foreground">Тут пусто</p>
               <p className="text-xs text-muted-foreground">
-                Уведомления появятся, когда вам назначат задачу, KPI или упомянут в чате.
+                Уведомления появятся, когда вам назначат задачу, цель или упомянут в чате.
               </p>
             </div>
           ) : (

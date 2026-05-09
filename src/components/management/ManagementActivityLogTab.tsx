@@ -92,7 +92,7 @@ export function ManagementActivityLogTab() {
     return (
       <div className="rounded-xl border border-dashed border-border p-12 text-center">
         <Activity className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
-        <p className="text-sm font-medium">История пуста</p>
+        <p className="text-sm font-medium">Журнал пуст</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Действия по управлению ролями и доступами будут появляться здесь.
         </p>

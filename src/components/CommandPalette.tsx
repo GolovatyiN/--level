@@ -84,7 +84,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
   return (
     <>
       <CommandDialog open={open} onOpenChange={onOpenChange}>
-        <CommandInput placeholder="Поиск задач, KPI, отделов или команд..." />
+        <CommandInput placeholder="Поиск задач, целей, отделов или команд..." />
         <CommandList>
           <CommandEmpty>Ничего не найдено.</CommandEmpty>
 
@@ -96,7 +96,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
             </CommandItem>
             <CommandItem onSelect={() => run(() => setKpiOpen(true))}>
               <Target className="mr-2 h-4 w-4" />
-              Новый KPI
+              Новая цель
             </CommandItem>
           </CommandGroup>
 
@@ -105,17 +105,17 @@ export function CommandPalette({ open, onOpenChange }: Props) {
           <CommandGroup heading="Навигация">
             <CommandItem onSelect={() => run(() => navigate("/"))}>
               <LayoutDashboard className="mr-2 h-4 w-4" />
-              Дашборд
+              Панель управления
               <CommandShortcut>G D</CommandShortcut>
             </CommandItem>
             <CommandItem onSelect={() => run(() => navigate("/roadmap"))}>
               <MapIcon className="mr-2 h-4 w-4" />
-              Roadmap
+              Дорожная карта
               <CommandShortcut>G R</CommandShortcut>
             </CommandItem>
             <CommandItem onSelect={() => run(() => navigate("/kanban"))}>
               <Columns3 className="mr-2 h-4 w-4" />
-              Kanban
+              Канбан
               <CommandShortcut>G K</CommandShortcut>
             </CommandItem>
             <CommandItem onSelect={() => run(() => navigate("/table"))}>
@@ -125,7 +125,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
             </CommandItem>
             <CommandItem onSelect={() => run(() => navigate("/kpi"))}>
               <Target className="mr-2 h-4 w-4" />
-              KPI
+              Цели
               <CommandShortcut>G P</CommandShortcut>
             </CommandItem>
             <CommandItem onSelect={() => run(() => navigate("/directions"))}>
@@ -179,7 +179,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
           {recentKpis.length > 0 && (
             <>
               <CommandSeparator />
-              <CommandGroup heading="KPI">
+              <CommandGroup heading="Цели">
                 {recentKpis.map((k) => (
                   <CommandItem
                     key={k.id}

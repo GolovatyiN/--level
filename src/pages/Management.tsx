@@ -23,7 +23,7 @@ export default function Management() {
   return (
     <>
       <PageHeader
-        title="Менеджмент"
+        title="Управление"
         description="Пользователи, роли, отделы и доступы"
       />
       <div className="p-4 sm:p-8">
@@ -37,7 +37,7 @@ export default function Management() {
               <Users className="h-3.5 w-3.5" /> Пользователи
             </TabsTrigger>
             <TabsTrigger value="roles" className="gap-1.5 data-[state=active]:bg-muted">
-              <Shield className="h-3.5 w-3.5" /> Роли и права
+              <Shield className="h-3.5 w-3.5" /> Роли и права доступа
             </TabsTrigger>
             <TabsTrigger value="departments" className="gap-1.5 data-[state=active]:bg-muted">
               <Layers className="h-3.5 w-3.5" /> Отделы
@@ -46,7 +46,7 @@ export default function Management() {
               <Grid3x3 className="h-3.5 w-3.5" /> Матрица доступов
             </TabsTrigger>
             <TabsTrigger value="activity" className="gap-1.5 data-[state=active]:bg-muted">
-              <Activity className="h-3.5 w-3.5" /> История
+              <Activity className="h-3.5 w-3.5" /> Журнал действий
             </TabsTrigger>
           </TabsList>
 

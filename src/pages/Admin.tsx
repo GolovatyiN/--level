@@ -71,9 +71,9 @@ export default function Admin() {
             <SelectTrigger className="h-8 w-[170px] text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все роли</SelectItem>
-              <SelectItem value="superadmin">Суперадмин</SelectItem>
+              <SelectItem value="superadmin">Супер-админ</SelectItem>
               <SelectItem value="admin">Админ</SelectItem>
-              <SelectItem value="user">User</SelectItem>
+              <SelectItem value="user">Пользователь</SelectItem>
               <SelectItem value="no_role">Без роли</SelectItem>
             </SelectContent>
           </Select>
@@ -184,10 +184,10 @@ export default function Admin() {
 
 function RoleBadge({ role }: { role: string | null }) {
   if (role === "superadmin")
-    return <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-medium"><ShieldCheck className="h-3 w-3" /> Суперадмин</span>;
+    return <span className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-medium"><ShieldCheck className="h-3 w-3" /> Супер-админ</span>;
   if (role === "admin")
     return <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium"><Shield className="h-3 w-3" /> Админ</span>;
   if (role === "user")
-    return <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"><UserIcon className="h-3 w-3" /> User</span>;
+    return <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"><UserIcon className="h-3 w-3" /> Пользователь</span>;
   return <span className="text-xs text-muted-foreground">—</span>;
 }
