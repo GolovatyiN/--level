@@ -1,9 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
-  Map,
-  Columns3,
-  Table2,
+  ListChecks,
   Layers,
   Archive,
   LogOut,
@@ -32,9 +30,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/", label: "Панель управления", icon: LayoutDashboard, end: true },
-  { to: "/roadmap", label: "Дорожная карта", icon: Map },
-  { to: "/kanban", label: "Канбан", icon: Columns3 },
-  { to: "/table", label: "Таблица", icon: Table2 },
+  { to: "/tasks", label: "Планы и задачи", icon: ListChecks },
   { to: "/kpi", label: "Цели", icon: Target },
   { to: "/directions", label: "Отделы", icon: Layers },
   { to: "/archive", label: "Архив", icon: Archive },

@@ -7,7 +7,7 @@ import { useDirections } from "@/hooks/useDirections";
 import { Kpi, useKpis } from "@/hooks/useKpis";
 import { KpiDialog } from "@/components/KpiDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { QUARTERS, currentQuarter } from "@/lib/constants";
+import { QUARTERS, currentQuarter, quarterLabelRu } from "@/lib/constants";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { isPast, parseISO, eachDayOfInterval, startOfQuarter, endOfQuarter, format } from "date-fns";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
@@ -255,7 +255,7 @@ export default function KpiPage() {
             <Select value={quarter} onValueChange={setQuarter}>
               <SelectTrigger className="h-8 w-[140px] text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {quarterList.map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                {quarterList.map((q) => <SelectItem key={q} value={q}>{quarterLabelRu(q)}</SelectItem>)}
               </SelectContent>
             </Select>
             <Button size="sm" onClick={() => setCreating(true)}><Plus className="mr-1 h-4 w-4" /> Цель</Button>

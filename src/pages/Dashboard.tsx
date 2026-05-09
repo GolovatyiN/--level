@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { useTasks } from "@/hooks/useTasks";
 import { useDirections } from "@/hooks/useDirections";
-import { QUARTERS, currentQuarter } from "@/lib/constants";
+import { QUARTERS, currentQuarter, quarterLabelRu } from "@/lib/constants";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDialog } from "@/components/TaskDialog";
@@ -90,8 +90,8 @@ export default function Dashboard() {
               <SelectTrigger className="h-8 w-[140px] text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Все кварталы</SelectItem>
-                <SelectItem value={currentQuarter()}>Текущий ({currentQuarter()})</SelectItem>
-                {quarterList.filter((q) => q !== currentQuarter()).map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                <SelectItem value={currentQuarter()}>Текущий ({quarterLabelRu(currentQuarter())})</SelectItem>
+                {quarterList.filter((q) => q !== currentQuarter()).map((q) => <SelectItem key={q} value={q}>{quarterLabelRu(q)}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={direction} onValueChange={setDirection}>

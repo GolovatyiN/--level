@@ -1,6 +1,6 @@
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, Grid3x3, Layers, Shield, Users } from "lucide-react";
+import { Activity, Calendar, Grid3x3, Layers, Shield, Users } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useCanManage } from "@/hooks/useUserRole";
 import { ManagementUsersTab } from "@/components/management/ManagementUsersTab";
@@ -8,8 +8,9 @@ import { ManagementRolesTab } from "@/components/management/ManagementRolesTab";
 import { ManagementDepartmentsTab } from "@/components/management/ManagementDepartmentsTab";
 import { ManagementAccessMatrixTab } from "@/components/management/ManagementAccessMatrixTab";
 import { ManagementActivityLogTab } from "@/components/management/ManagementActivityLogTab";
+import { ManagementQuartersTab } from "@/components/management/ManagementQuartersTab";
 
-const TABS = ["users", "roles", "departments", "matrix", "activity"] as const;
+const TABS = ["users", "roles", "departments", "quarters", "matrix", "activity"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Management() {
@@ -42,6 +43,9 @@ export default function Management() {
             <TabsTrigger value="departments" className="gap-1.5 data-[state=active]:bg-muted">
               <Layers className="h-3.5 w-3.5" /> Отделы
             </TabsTrigger>
+            <TabsTrigger value="quarters" className="gap-1.5 data-[state=active]:bg-muted">
+              <Calendar className="h-3.5 w-3.5" /> Кварталы
+            </TabsTrigger>
             <TabsTrigger value="matrix" className="gap-1.5 data-[state=active]:bg-muted">
               <Grid3x3 className="h-3.5 w-3.5" /> Матрица доступов
             </TabsTrigger>
@@ -58,6 +62,9 @@ export default function Management() {
           </TabsContent>
           <TabsContent value="departments" className="mt-2 animate-fade-in">
             <ManagementDepartmentsTab />
+          </TabsContent>
+          <TabsContent value="quarters" className="mt-2 animate-fade-in">
+            <ManagementQuartersTab />
           </TabsContent>
           <TabsContent value="matrix" className="mt-2 animate-fade-in">
             <ManagementAccessMatrixTab />

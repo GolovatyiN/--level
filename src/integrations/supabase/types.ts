@@ -69,6 +69,108 @@ export type Database = {
         }
         Relationships: []
       }
+      department_plan_comments: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          content: string
+          created_at: string
+          id: string
+          kind: string
+          plan_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          kind?: string
+          plan_id: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_plan_comments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "department_plan_stats"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "department_plan_comments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "department_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      department_plans: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          direction_id: string
+          id: string
+          quarter_id: string
+          status: Database["public"]["Enums"]["plan_status"]
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          direction_id: string
+          id?: string
+          quarter_id: string
+          status?: Database["public"]["Enums"]["plan_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          direction_id?: string
+          id?: string
+          quarter_id?: string
+          status?: Database["public"]["Enums"]["plan_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_plans_direction_id_fkey"
+            columns: ["direction_id"]
+            isOneToOne: false
+            referencedRelation: "directions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_plans_quarter_id_fkey"
+            columns: ["quarter_id"]
+            isOneToOne: false
+            referencedRelation: "quarters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       directions: {
         Row: {
           color: string
@@ -421,23 +523,41 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          end_date: string | null
           id: string
+          is_visible: boolean
           label: string
+          quarter_no: number | null
           sort_key: string
+          start_date: string | null
+          status: Database["public"]["Enums"]["quarter_status"]
+          year: number | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          end_date?: string | null
           id?: string
+          is_visible?: boolean
           label: string
+          quarter_no?: number | null
           sort_key?: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["quarter_status"]
+          year?: number | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          end_date?: string | null
           id?: string
+          is_visible?: boolean
           label?: string
+          quarter_no?: number | null
           sort_key?: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["quarter_status"]
+          year?: number | null
         }
         Relationships: []
       }
@@ -547,6 +667,7 @@ export type Database = {
           direction_id: string | null
           id: string
           notes: string | null
+          plan_id: string | null
           priority: Database["public"]["Enums"]["task_priority"]
           quarter: string
           status: Database["public"]["Enums"]["task_status"]
@@ -566,6 +687,7 @@ export type Database = {
           direction_id?: string | null
           id?: string
           notes?: string | null
+          plan_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           quarter: string
           status?: Database["public"]["Enums"]["task_status"]
@@ -585,6 +707,7 @@ export type Database = {
           direction_id?: string | null
           id?: string
           notes?: string | null
+          plan_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           quarter?: string
           status?: Database["public"]["Enums"]["task_status"]
@@ -597,6 +720,20 @@ export type Database = {
             columns: ["direction_id"]
             isOneToOne: false
             referencedRelation: "directions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "department_plan_stats"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "tasks_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "department_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -656,7 +793,37 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      department_plan_stats: {
+        Row: {
+          at_risk_tasks: number | null
+          blocked_tasks: number | null
+          completed_tasks: number | null
+          direction_id: string | null
+          in_progress_tasks: number | null
+          last_task_update: string | null
+          overdue_tasks: number | null
+          plan_id: string | null
+          progress_pct: number | null
+          quarter_id: string | null
+          total_tasks: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_plans_direction_id_fkey"
+            columns: ["direction_id"]
+            isOneToOne: false
+            referencedRelation: "directions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_plans_quarter_id_fkey"
+            columns: ["quarter_id"]
+            isOneToOne: false
+            referencedRelation: "quarters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_dept_access: {
@@ -689,6 +856,17 @@ export type Database = {
         | "department_head"
         | "manager"
         | "viewer"
+      plan_status:
+        | "draft"
+        | "on_review"
+        | "changes_requested"
+        | "approved"
+        | "in_progress"
+        | "at_risk"
+        | "blocked"
+        | "completed"
+        | "archived"
+      quarter_status: "planned" | "active" | "closed" | "archived"
       task_priority: "low" | "medium" | "high" | "critical"
       task_status:
         | "planned"
@@ -696,6 +874,9 @@ export type Database = {
         | "at_risk"
         | "blocked"
         | "completed"
+        | "backlog"
+        | "in_review"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -835,6 +1016,18 @@ export const Constants = {
         "manager",
         "viewer",
       ],
+      plan_status: [
+        "draft",
+        "on_review",
+        "changes_requested",
+        "approved",
+        "in_progress",
+        "at_risk",
+        "blocked",
+        "completed",
+        "archived",
+      ],
+      quarter_status: ["planned", "active", "closed", "archived"],
       task_priority: ["low", "medium", "high", "critical"],
       task_status: [
         "planned",
@@ -842,6 +1035,9 @@ export const Constants = {
         "at_risk",
         "blocked",
         "completed",
+        "backlog",
+        "in_review",
+        "cancelled",
       ],
     },
   },
