@@ -52,59 +52,50 @@ export type AuditLogEntry = {
 // ---------------------------------------------------------------------------
 
 /**
- * Full Management-side user list. Uses the existing admin-users edge
- * function (it returns auth metadata that's not available to the anon
- * client) and merges in roles, profile flags, and access entries.
+ * Full Management-side user list, sourced directly from `profiles` and
+ * `user_roles` (no edge function needed).
+ *
+ * `profiles.email` is mirrored from `auth.users` by a trigger so the
+ * anon-client can read it under RLS. Roles are joined client-side.
  */
 export function useManagementUsers(enabled = true) {
   return useQuery({
     queryKey: ["management_users"],
     enabled,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("admin-users", {
-        body: { action: "list" },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const users = ((data as any).users ?? []) as Array<{
-        id: string;
-        email: string | null;
-        display_name: string | null;
-        created_at: string;
-        last_sign_in_at: string | null;
-        roles: string[];
-      }>;
+      const { data: pdata, error: perr } = await supabase
+        .from("profiles" as any)
+        .select("user_id, display_name, email, is_active, last_active_at, created_by_user_id, created_at")
+        .order("created_at", { ascending: false });
+      if (perr) throw perr;
 
-      // Augment with profile flags (is_active etc).
-      const ids = users.map((u) => u.id);
-      let profiles: Array<{
-        user_id: string;
-        is_active?: boolean;
-        last_active_at?: string | null;
-        created_by_user_id?: string | null;
-      }> = [];
-      if (ids.length > 0) {
-        const { data: pdata } = await supabase
-          .from("profiles" as any)
-          .select("user_id, is_active, last_active_at, created_by_user_id")
-          .in("user_id", ids);
-        profiles = (pdata as any[]) ?? [];
-      }
-      const pmap = new Map(profiles.map((p) => [p.user_id, p]));
+      const profiles = (pdata as any[]) ?? [];
+      if (profiles.length === 0) return [] as ManagementUser[];
 
-      return users.map<ManagementUser>((u) => {
-        const p = pmap.get(u.id);
-        return {
-          user_id: u.id,
-          email: u.email,
-          display_name: u.display_name,
-          created_at: u.created_at,
-          last_active_at: p?.last_active_at ?? u.last_sign_in_at ?? null,
-          is_active: p?.is_active ?? true,
-          created_by_user_id: p?.created_by_user_id ?? null,
-          roles: u.roles as AppRole[],
-        };
+      const ids = profiles.map((p) => p.user_id);
+      const { data: rdata, error: rerr } = await supabase
+        .from("user_roles" as any)
+        .select("user_id, role")
+        .in("user_id", ids);
+      if (rerr) throw rerr;
+
+      const rolesByUser = new Map<string, AppRole[]>();
+      ((rdata as any[]) ?? []).forEach((r) => {
+        const arr = rolesByUser.get(r.user_id) ?? [];
+        arr.push(r.role as AppRole);
+        rolesByUser.set(r.user_id, arr);
       });
+
+      return profiles.map<ManagementUser>((p) => ({
+        user_id: p.user_id,
+        email: p.email ?? null,
+        display_name: p.display_name ?? null,
+        created_at: p.created_at,
+        last_active_at: p.last_active_at ?? null,
+        is_active: p.is_active ?? true,
+        created_by_user_id: p.created_by_user_id ?? null,
+        roles: rolesByUser.get(p.user_id) ?? [],
+      }));
     },
   });
 }
