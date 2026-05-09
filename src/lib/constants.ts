@@ -4,11 +4,14 @@ export type TaskStatus = Database["public"]["Enums"]["task_status"];
 export type TaskPriority = Database["public"]["Enums"]["task_priority"];
 
 export const STATUSES: { value: TaskStatus; label: string; colorVar: string }[] = [
-  { value: "planned", label: "Запланировано", colorVar: "status-planned" },
-  { value: "in_progress", label: "В работе", colorVar: "status-progress" },
-  { value: "at_risk", label: "Под риском", colorVar: "status-risk" },
-  { value: "blocked", label: "Блокер", colorVar: "status-blocked" },
-  { value: "completed", label: "Завершено", colorVar: "status-completed" },
+  { value: "backlog",     label: "Бэклог",        colorVar: "status-planned" },
+  { value: "planned",     label: "Запланировано", colorVar: "status-planned" },
+  { value: "in_progress", label: "В работе",      colorVar: "status-progress" },
+  { value: "at_risk",     label: "Под риском",    colorVar: "status-risk" },
+  { value: "blocked",     label: "Заблокирована", colorVar: "status-blocked" },
+  { value: "in_review",   label: "На проверке",   colorVar: "status-progress" },
+  { value: "completed",   label: "Завершена",     colorVar: "status-completed" },
+  { value: "cancelled",   label: "Отменена",      colorVar: "status-planned" },
 ];
 
 export const PRIORITIES: { value: TaskPriority; label: string; colorVar: string }[] = [
@@ -21,16 +24,27 @@ export const PRIORITIES: { value: TaskPriority; label: string; colorVar: string 
 export const statusLabel = (s: TaskStatus) => STATUSES.find((x) => x.value === s)?.label ?? s;
 export const priorityLabel = (p: TaskPriority) => PRIORITIES.find((x) => x.value === p)?.label ?? p;
 
+/**
+ * Fallback quarter labels — used only when the live `quarters` table is
+ * unavailable. Starts from 2026 (per spec: 2025 is hidden by default).
+ */
 export function generateQuarters(): string[] {
-  const year = new Date().getFullYear();
+  const start = Math.max(2026, new Date().getFullYear());
   const list: string[] = [];
-  for (let y = year - 1; y <= year + 2; y++) {
+  for (let y = start; y <= start + 2; y++) {
     for (let q = 1; q <= 4; q++) list.push(`Q${q} ${y}`);
   }
   return list;
 }
 
 export const QUARTERS = generateQuarters();
+
+/** Convert a "Q3 2026" → "3 квартал 2026" for UI display. */
+export function quarterLabelRu(label: string): string {
+  const m = label.match(/Q([1-4])\s*(\d{4})/i);
+  if (!m) return label;
+  return `${m[1]} квартал ${m[2]}`;
+}
 
 export function currentQuarter(): string {
   const d = new Date();

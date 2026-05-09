@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { useDirections } from "@/hooks/useDirections";
 import { useTasks } from "@/hooks/useTasks";
-import { PRIORITIES, QUARTERS, STATUSES } from "@/lib/constants";
+import { PRIORITIES, QUARTERS, STATUSES, quarterLabelRu } from "@/lib/constants";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { useMemo } from "react";
 import { isPast, parseISO } from "date-fns";
@@ -101,7 +101,7 @@ export function TaskFilters({
         <SelectTrigger className="h-8 w-[140px] text-sm"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Все кварталы</SelectItem>
-          {quarterList.map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+          {quarterList.map((q) => <SelectItem key={q} value={q}>{quarterLabelRu(q)}</SelectItem>)}
         </SelectContent>
       </Select>
       {!hideStatus && (

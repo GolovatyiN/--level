@@ -7,9 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
-import Roadmap from "./pages/Roadmap.tsx";
-import Kanban from "./pages/Kanban.tsx";
-import TasksTable from "./pages/TasksTable.tsx";
+import Tasks from "./pages/Tasks.tsx";
 import DirectionsPage from "./pages/Directions.tsx";
 import Archive from "./pages/Archive.tsx";
 import KpiPage from "./pages/Kpi.tsx";
@@ -33,9 +31,11 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/roadmap" element={<Roadmap />} />
-                <Route path="/kanban" element={<Kanban />} />
-                <Route path="/table" element={<TasksTable />} />
+                <Route path="/tasks" element={<Tasks />} />
+                {/* Redirects from old paths to keep deep links alive. */}
+                <Route path="/roadmap" element={<Tasks />} />
+                <Route path="/kanban" element={<Tasks />} />
+                <Route path="/table" element={<Tasks />} />
                 <Route path="/kpi" element={<KpiPage />} />
                 <Route path="/directions" element={<DirectionsPage />} />
                 <Route path="/archive" element={<Archive />} />

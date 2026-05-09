@@ -2,14 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Archive,
-  Columns3,
   Layers,
   LayoutDashboard,
+  ListChecks,
   ListTodo,
-  Map as MapIcon,
   Plus,
   ShieldCheck,
-  Table2,
   Target,
 } from "lucide-react";
 import {
@@ -108,20 +106,15 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               Панель управления
               <CommandShortcut>G D</CommandShortcut>
             </CommandItem>
-            <CommandItem onSelect={() => run(() => navigate("/roadmap"))}>
-              <MapIcon className="mr-2 h-4 w-4" />
-              Дорожная карта
-              <CommandShortcut>G R</CommandShortcut>
+            <CommandItem onSelect={() => run(() => navigate("/tasks"))}>
+              <ListChecks className="mr-2 h-4 w-4" />
+              Планы и задачи
+              <CommandShortcut>G T</CommandShortcut>
             </CommandItem>
-            <CommandItem onSelect={() => run(() => navigate("/kanban"))}>
-              <Columns3 className="mr-2 h-4 w-4" />
+            <CommandItem onSelect={() => run(() => navigate("/tasks?view=kanban"))}>
+              <ListChecks className="mr-2 h-4 w-4" />
               Канбан
               <CommandShortcut>G K</CommandShortcut>
-            </CommandItem>
-            <CommandItem onSelect={() => run(() => navigate("/table"))}>
-              <Table2 className="mr-2 h-4 w-4" />
-              Таблица
-              <CommandShortcut>G T</CommandShortcut>
             </CommandItem>
             <CommandItem onSelect={() => run(() => navigate("/kpi"))}>
               <Target className="mr-2 h-4 w-4" />
