@@ -14,6 +14,7 @@ import DirectionsPage from "./pages/Directions.tsx";
 import Archive from "./pages/Archive.tsx";
 import KpiPage from "./pages/Kpi.tsx";
 import Admin from "./pages/Admin.tsx";
+import Management from "./pages/Management.tsx";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./layouts/AppLayout";
@@ -38,6 +39,7 @@ const App = () => (
                 <Route path="/kpi" element={<KpiPage />} />
                 <Route path="/directions" element={<DirectionsPage />} />
                 <Route path="/archive" element={<Archive />} />
+                <Route path="/management" element={<Management />} />
                 <Route path="/admin" element={<Admin />} />
               </Route>
               <Route path="*" element={<NotFound />} />

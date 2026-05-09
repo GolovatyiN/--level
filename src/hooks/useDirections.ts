@@ -8,6 +8,9 @@ export type Direction = {
   description: string | null;
   color: string;
   owner: string | null;
+  /** Primary department head — references auth.users.id. Set in the
+   *  Management UI; renders the owner block on direction cards. */
+  head_user_id: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -2,7 +2,41 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-export type AppRole = "superadmin" | "admin" | "user";
+export type AppRole =
+  | "superadmin"
+  | "admin"
+  | "department_head"
+  | "manager"
+  | "viewer"
+  | "user";
+
+/** Display order for badges and pickers — most-privileged first. */
+export const ROLE_ORDER: AppRole[] = [
+  "superadmin",
+  "admin",
+  "department_head",
+  "manager",
+  "viewer",
+  "user",
+];
+
+export const ROLE_LABELS: Record<AppRole, string> = {
+  superadmin: "Super Admin",
+  admin: "Admin",
+  department_head: "Руководитель отдела",
+  manager: "Manager",
+  viewer: "Viewer",
+  user: "User",
+};
+
+/**
+ * "Effective" role for a user — the highest-privileged one assigned to
+ * them. Drives badge colour, sidebar visibility, and Management UI guards.
+ */
+export function effectiveRole(roles: AppRole[]): AppRole | null {
+  for (const r of ROLE_ORDER) if (roles.includes(r)) return r;
+  return null;
+}
 
 export function useUserRoles() {
   const { user } = useAuth();
@@ -28,4 +62,19 @@ export function useIsSuperadmin() {
 export function useIsAdmin() {
   const { data: roles = [] } = useUserRoles();
   return roles.includes("admin") || roles.includes("superadmin");
+}
+
+/** Admin or above — used to show the Management nav and protect routes. */
+export function useCanManage() {
+  return useIsAdmin();
+}
+
+/** Department head or above. */
+export function useIsDepartmentHead() {
+  const { data: roles = [] } = useUserRoles();
+  return (
+    roles.includes("department_head") ||
+    roles.includes("admin") ||
+    roles.includes("superadmin")
+  );
 }

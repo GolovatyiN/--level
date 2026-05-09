@@ -14,10 +14,11 @@ import {
   X,
   Search,
   AlertTriangle,
+  Settings2,
 } from "lucide-react";
 import { isPast, parseISO } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
-import { useIsSuperadmin } from "@/hooks/useUserRole";
+import { useCanManage, useIsSuperadmin } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useState } from "react";
 import { TaskDialog } from "@/components/TaskDialog";
@@ -47,7 +48,12 @@ export function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isSuper = useIsSuperadmin();
-  const nav = isSuper ? [...NAV, { to: "/admin", label: "Админка", icon: ShieldCheck }] : NAV;
+  const canManage = useCanManage();
+  const nav = [
+    ...NAV,
+    ...(canManage ? [{ to: "/management", label: "Менеджмент", icon: Settings2 }] : []),
+    ...(isSuper ? [{ to: "/admin", label: "Админка", icon: ShieldCheck }] : []),
+  ];
 
   // Overdue task badge — visible reminder in the sidebar.
   const { data: tasks = [] } = useTasks();
