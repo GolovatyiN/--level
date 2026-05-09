@@ -39,12 +39,43 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          details: Json
+          id: string
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: []
+      }
       directions: {
         Row: {
           color: string
           created_at: string
           created_by: string | null
           description: string | null
+          head_user_id: string | null
           id: string
           name: string
           owner: string | null
@@ -55,6 +86,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          head_user_id?: string | null
           id?: string
           name: string
           owner?: string | null
@@ -65,6 +97,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          head_user_id?: string | null
           id?: string
           name?: string
           owner?: string | null
@@ -351,22 +384,31 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          created_by_user_id: string | null
           display_name: string | null
           id: string
+          is_active: boolean
+          last_active_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          created_by_user_id?: string | null
           display_name?: string | null
           id?: string
+          is_active?: boolean
+          last_active_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          created_by_user_id?: string | null
           display_name?: string | null
           id?: string
+          is_active?: boolean
+          last_active_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -556,6 +598,38 @@ export type Database = {
           },
         ]
       }
+      user_department_access: {
+        Row: {
+          access_level: Database["public"]["Enums"]["access_level"]
+          direction_id: string
+          granted_at: string
+          granted_by: string | null
+          user_id: string
+        }
+        Insert: {
+          access_level?: Database["public"]["Enums"]["access_level"]
+          direction_id: string
+          granted_at?: string
+          granted_by?: string | null
+          user_id: string
+        }
+        Update: {
+          access_level?: Database["public"]["Enums"]["access_level"]
+          direction_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_department_access_direction_id_fkey"
+            columns: ["direction_id"]
+            isOneToOne: false
+            referencedRelation: "directions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -582,6 +656,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_dept_access: {
+        Args: {
+          _direction: string
+          _min_level: Database["public"]["Enums"]["access_level"]
+          _user: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -590,9 +672,20 @@ export type Database = {
         Returns: boolean
       }
       recompute_kpi_value: { Args: { _kpi_id: string }; Returns: undefined }
+      user_dept_access_level: {
+        Args: { _direction: string; _user: string }
+        Returns: Database["public"]["Enums"]["access_level"]
+      }
     }
     Enums: {
-      app_role: "superadmin" | "admin" | "user"
+      access_level: "view" | "edit" | "full"
+      app_role:
+        | "superadmin"
+        | "admin"
+        | "user"
+        | "department_head"
+        | "manager"
+        | "viewer"
       task_priority: "low" | "medium" | "high" | "critical"
       task_status:
         | "planned"
@@ -730,7 +823,15 @@ export const Constants = {
   },
   public: {
     Enums: {
-      app_role: ["superadmin", "admin", "user"],
+      access_level: ["view", "edit", "full"],
+      app_role: [
+        "superadmin",
+        "admin",
+        "user",
+        "department_head",
+        "manager",
+        "viewer",
+      ],
       task_priority: ["low", "medium", "high", "critical"],
       task_status: [
         "planned",
