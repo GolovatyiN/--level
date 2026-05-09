@@ -76,8 +76,10 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_final: boolean
           kind: string
           plan_id: string
+          task_id: string | null
         }
         Insert: {
           author_id?: string | null
@@ -85,8 +87,10 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          is_final?: boolean
           kind?: string
           plan_id: string
+          task_id?: string | null
         }
         Update: {
           author_id?: string | null
@@ -94,8 +98,10 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_final?: boolean
           kind?: string
           plan_id?: string
+          task_id?: string | null
         }
         Relationships: [
           {
@@ -110,6 +116,13 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "department_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_plan_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]

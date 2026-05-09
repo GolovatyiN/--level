@@ -17,6 +17,8 @@ export type Task = {
   assignee: string | null;
   /** New: FK to auth.users.id. When set, takes priority over `assignee`. */
   assignee_id: string | null;
+  /** Optional FK to the quarterly plan this task belongs to. */
+  plan_id: string | null;
   asana_url: string | null;
   notes: string | null;
   archived: boolean;

@@ -1,6 +1,21 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, BellOff, CheckCheck, ListTodo, MessageSquare, Target, Trash2 } from "lucide-react";
+import {
+  Bell,
+  BellOff,
+  CheckCheck,
+  ClipboardCheck,
+  Flag,
+  ListTodo,
+  MessageSquare,
+  PauseCircle,
+  RefreshCcw,
+  Send,
+  ShieldCheck,
+  Target,
+  Trash2,
+  Trophy,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -23,12 +38,20 @@ const ICONS: Record<NotificationType, React.ComponentType<{ className?: string }
   kpi_mention: MessageSquare,
   kpi_progress: Target,
   kpi_comment: MessageSquare,
+  plan_on_review:         Send,
+  plan_approved:          ShieldCheck,
+  plan_changes_requested: RefreshCcw,
+  plan_at_risk:           Flag,
+  plan_blocked:           PauseCircle,
+  plan_completed:         Trophy,
+  plan_comment:           ClipboardCheck,
 };
 
 function entityLink(n: Notification): string | null {
-  if (n.entity_type === "task") return `/table?task=${n.entity_id}`;
+  if (n.entity_type === "task") return `/tasks?task=${n.entity_id}`;
   if (n.entity_type === "kpi") return `/kpi?kpi=${n.entity_id}`;
   if (n.entity_type === "kpi_comment") return `/kpi`;
+  if (n.entity_type === "department_plan") return `/plans/${n.entity_id}`;
   return null;
 }
 

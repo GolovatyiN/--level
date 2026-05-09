@@ -8,6 +8,7 @@ import {
   Plus,
   Target,
   ShieldCheck,
+  ClipboardCheck,
   Menu,
   X,
   Search,
@@ -30,6 +31,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/", label: "Панель управления", icon: LayoutDashboard, end: true },
+  { to: "/plans", label: "Квартальные планы", icon: ClipboardCheck },
   { to: "/tasks", label: "Планы и задачи", icon: ListChecks },
   { to: "/kpi", label: "Цели", icon: Target },
   { to: "/directions", label: "Отделы", icon: Layers },
