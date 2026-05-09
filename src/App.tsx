@@ -8,6 +8,8 @@ import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Tasks from "./pages/Tasks.tsx";
+import Plans from "./pages/Plans.tsx";
+import PlanDetail from "./pages/PlanDetail.tsx";
 import DirectionsPage from "./pages/Directions.tsx";
 import Archive from "./pages/Archive.tsx";
 import KpiPage from "./pages/Kpi.tsx";
@@ -32,6 +34,8 @@ const App = () => (
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/tasks" element={<Tasks />} />
+                <Route path="/plans" element={<Plans />} />
+                <Route path="/plans/:id" element={<PlanDetail />} />
                 {/* Redirects from old paths to keep deep links alive. */}
                 <Route path="/roadmap" element={<Tasks />} />
                 <Route path="/kanban" element={<Tasks />} />

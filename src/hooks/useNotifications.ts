@@ -9,7 +9,14 @@ export type NotificationType =
   | "kpi_assigned"
   | "kpi_mention"
   | "kpi_progress"
-  | "kpi_comment";
+  | "kpi_comment"
+  | "plan_on_review"
+  | "plan_approved"
+  | "plan_changes_requested"
+  | "plan_at_risk"
+  | "plan_blocked"
+  | "plan_completed"
+  | "plan_comment";
 
 export type Notification = {
   id: string;
