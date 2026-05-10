@@ -124,7 +124,7 @@ export function DashboardCharts() {
           {statusData.length === 0 ? (
             <Empty />
           ) : (
-            <div className="h-56">
+            <div className="mx-auto h-56 max-w-[280px]">
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
@@ -151,7 +151,7 @@ export function DashboardCharts() {
           {prioData.length === 0 ? (
             <Empty />
           ) : (
-            <div className="h-56">
+            <div className="mx-auto h-56 max-w-[280px]">
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
@@ -280,13 +280,19 @@ function ChartCard({
 
 function Legend({ items }: { items: Array<{ name: string; value: number; fill: string }> }) {
   if (items.length === 0) return null;
+  // flex-wrap chips: каждый элемент остаётся компактным, значение прилипает
+  // прямо к своему лейблу, без пустых пространств от ml-auto в широкой
+  // grid-колонке.
   return (
-    <ul className="mt-3 grid grid-cols-2 gap-1 text-xs">
+    <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5 text-xs">
       {items.map((d) => (
-        <li key={d.name} className="flex items-center gap-1.5 text-muted-foreground">
-          <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: d.fill }} />
-          <span className="truncate">{d.name}</span>
-          <span className="ml-auto tabular-nums text-foreground">{d.value}</span>
+        <li
+          key={d.name}
+          className="inline-flex items-center gap-1.5 text-muted-foreground"
+        >
+          <span className="h-2 w-2 shrink-0 rounded-sm" style={{ backgroundColor: d.fill }} />
+          <span>{d.name}</span>
+          <span className="tabular-nums font-medium text-foreground">{d.value}</span>
         </li>
       ))}
     </ul>
