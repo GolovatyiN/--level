@@ -49,10 +49,11 @@ const ROLE_OPTIONS: { value: AppRole; label: string }[] = [
 /**
  * /management → «Добавить пользователя».
  *
- * Вызывает edge-функцию `invite-user` (она через service_role генерирует
- * invite-ссылку и пишет роль/доступы в обход RLS). Возвращаемый
- * `action_link` показываем админу, чтобы он мог скопировать его и
- * передать пользователю — на случай если письмо не дойдёт.
+ * Вызывает edge-функцию `invite-user`: она через service_role создаёт
+ * пользователя (без отправки письма), генерирует одноразовую magic-ссылку
+ * и проставляет роль / доступы в обход RLS. Возвращаемый `action_link`
+ * показываем админу — он сам передаёт ссылку пользователю удобным
+ * способом (мессенджер, почта, и т.д.).
  */
 export function InviteUserDialog({ open, onOpenChange }: Props) {
   const isSuper = useIsSuperadmin();
@@ -115,8 +116,12 @@ export function InviteUserDialog({ open, onOpenChange }: Props) {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
 
-      toast.success("Приглашение отправлено");
-      setLink((data as any)?.action_link ?? null);
+      const generatedLink = (data as any)?.action_link as string | undefined;
+      if (!generatedLink) {
+        throw new Error("Ссылка не была сгенерирована");
+      }
+      toast.success("Ссылка для входа создана");
+      setLink(generatedLink);
       // Обновляем список пользователей в фоне.
       qc.invalidateQueries({ queryKey: ["management_users"] });
       qc.invalidateQueries({ queryKey: ["app_users"] });
@@ -148,20 +153,21 @@ export function InviteUserDialog({ open, onOpenChange }: Props) {
             <Mail className="h-4 w-4" /> Добавить пользователя
           </DialogTitle>
           <DialogDescription>
-            Сгенерируем одноразовую ссылку для приглашения. Пользователь
-            установит пароль и сможет войти.
+            Создадим аккаунт и сгенерируем одноразовую ссылку для входа.
+            Скопируйте её и передайте пользователю удобным способом — письма
+            не отправляются.
           </DialogDescription>
         </DialogHeader>
 
         {link ? (
           <div className="space-y-3">
             <div className="rounded-lg border border-success/40 bg-success/5 p-3 text-sm">
-              Приглашение для <span className="font-medium">{email}</span> создано.
-              Пользователь получил письмо. Если письмо не дошло, передайте ссылку
-              ниже напрямую.
+              Аккаунт для <span className="font-medium">{email}</span> создан.
+              Передайте пользователю ссылку ниже — по ней он установит пароль
+              и попадёт в систему.
             </div>
             <div className="grid gap-1.5">
-              <Label>Ссылка-приглашение</Label>
+              <Label>Одноразовая ссылка для входа</Label>
               <div className="flex gap-2">
                 <Input value={link} readOnly className="font-mono text-xs" />
                 <Button type="button" variant="outline" size="icon" onClick={copy} title="Копировать">
@@ -169,12 +175,13 @@ export function InviteUserDialog({ open, onOpenChange }: Props) {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Ссылка одноразовая. После использования она перестанет работать.
+                Ссылка одноразовая и ограничена по времени. После использования
+                она перестанет работать.
               </p>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => reset()}>
-                Пригласить ещё
+                Создать ещё
               </Button>
               <Button onClick={() => handleClose(false)}>Готово</Button>
             </DialogFooter>
@@ -287,7 +294,7 @@ export function InviteUserDialog({ open, onOpenChange }: Props) {
               </Button>
               <Button onClick={submit} disabled={submitting}>
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Отправить приглашение
+                Создать ссылку
               </Button>
             </DialogFooter>
           </div>
