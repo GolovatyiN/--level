@@ -51,13 +51,18 @@ export function AppLayout() {
   ];
 
   // Overdue task badge — visible reminder in the sidebar.
-  const { data: tasks = [] } = useTasks();
+  // Используем `isFetched` чтобы не показывать счётчик из stale-кэша
+  // прошлой сессии до прихода свежих данных с сервера. Это предотвращает
+  // ситуацию когда «1 просрочено» висит, хотя задачу уже удалили.
+  const { data: tasks = [], isFetched } = useTasks();
   const overdueCount = useMemo(
     () =>
-      tasks.filter(
-        (t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed",
-      ).length,
-    [tasks],
+      isFetched
+        ? tasks.filter(
+            (t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed",
+          ).length
+        : 0,
+    [tasks, isFetched],
   );
 
   // Wire up app-wide keyboard shortcuts.

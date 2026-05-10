@@ -20,7 +20,23 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./layouts/AppLayout";
 
-const queryClient = new QueryClient();
+/**
+ * QueryClient defaults:
+ * - refetchOnMount: "always" — каждый раз когда компонент монтируется
+ *   (например, переход на /), данные перезапрашиваются. Иначе плашки в
+ *   сайдбаре ("N просрочено", "N непрочитанных") могут зависать на
+ *   stale-кэше прошлой сессии после удаления сущностей.
+ * - staleTime: 30s — внутри одной сессии запросы не дёргаются на каждый
+ *   re-render, только когда данные действительно устарели.
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnMount: "always",
+      staleTime: 30_000,
+    },
+  },
+});
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="company-hub-theme">
