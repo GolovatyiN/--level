@@ -16,6 +16,7 @@ import { format, parseISO } from "date-fns";
 
 import { PageHeader } from "@/components/PageHeader";
 import { TaskFilters, applyFilters, initialFilters, FiltersState } from "@/components/TaskFilters";
+import { currentQuarter } from "@/lib/constants";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDialog } from "@/components/TaskDialog";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
@@ -48,12 +49,13 @@ export default function Tasks() {
   const [view, setView] = useState<ViewMode>(initial);
   // Seed filters from URL once on mount so deep links from the dashboard
   // (e.g. /tasks?priority=critical) land on a pre-filtered table.
+  // Default quarter = current — keeps Q1/Q2/Q3/Q4 task lists from mixing.
   const [filters, setFilters] = useState<FiltersState>(() => ({
     ...initialFilters,
     priority: params.get("priority") ?? initialFilters.priority,
     status: params.get("status") ?? initialFilters.status,
     direction: params.get("direction") ?? initialFilters.direction,
-    quarter: params.get("quarter") ?? initialFilters.quarter,
+    quarter: params.get("quarter") ?? currentQuarter(),
     assignee: params.get("assignee") ?? initialFilters.assignee,
   }));
   const [editing, setEditing] = useState<Task | null>(null);

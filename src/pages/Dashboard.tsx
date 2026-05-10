@@ -49,7 +49,10 @@ export default function Dashboard() {
     return Array.from(set).sort();
   }, [dynamicQuarters]);
 
-  const [quarter, setQuarter] = useState<string>("all");
+  // Дашборд по умолчанию показывает текущий активный квартал, чтобы
+  // данные разных периодов не смешивались. Переключение на «Все» / другой
+  // квартал — через выпадайку в шапке.
+  const [quarter, setQuarter] = useState<string>(currentQuarter());
   const [direction, setDirection] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [departmentDialog, setDepartmentDialog] = useState<Direction | null>(null);
@@ -118,11 +121,11 @@ export default function Dashboard() {
                 {directions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            {(quarter !== "all" || direction !== "all" || statusFilter !== "all") && (
+            {(quarter !== currentQuarter() || direction !== "all" || statusFilter !== "all") && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => { setQuarter("all"); setDirection("all"); setStatusFilter("all"); }}
+                onClick={() => { setQuarter(currentQuarter()); setDirection("all"); setStatusFilter("all"); }}
               >
                 Сброс
               </Button>
