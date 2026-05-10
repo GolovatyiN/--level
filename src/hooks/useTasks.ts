@@ -19,6 +19,12 @@ export type Task = {
   assignee_id: string | null;
   /** Optional FK to the quarterly plan this task belongs to. */
   plan_id: string | null;
+  /**
+   * Свободный per-task тег / направление. Хранится только на самой
+   * задаче — НЕ глобальный справочник (см. отдельные `tags` для
+   * глобального тегирования через TagPicker).
+   */
+  direction_tag: string | null;
   asana_url: string | null;
   notes: string | null;
   archived: boolean;

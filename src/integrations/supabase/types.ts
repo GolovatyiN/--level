@@ -678,6 +678,7 @@ export type Database = {
           deadline: string | null
           description: string | null
           direction_id: string | null
+          direction_tag: string | null
           id: string
           notes: string | null
           plan_id: string | null
@@ -698,6 +699,7 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           direction_id?: string | null
+          direction_tag?: string | null
           id?: string
           notes?: string | null
           plan_id?: string | null
@@ -718,6 +720,7 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           direction_id?: string | null
+          direction_tag?: string | null
           id?: string
           notes?: string | null
           plan_id?: string | null
