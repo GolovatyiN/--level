@@ -46,7 +46,16 @@ export default function Tasks() {
   const [params, setParams] = useSearchParams();
   const initial = (params.get("view") as ViewMode) === "kanban" ? "kanban" : "table";
   const [view, setView] = useState<ViewMode>(initial);
-  const [filters, setFilters] = useState<FiltersState>(initialFilters);
+  // Seed filters from URL once on mount so deep links from the dashboard
+  // (e.g. /tasks?priority=critical) land on a pre-filtered table.
+  const [filters, setFilters] = useState<FiltersState>(() => ({
+    ...initialFilters,
+    priority: params.get("priority") ?? initialFilters.priority,
+    status: params.get("status") ?? initialFilters.status,
+    direction: params.get("direction") ?? initialFilters.direction,
+    quarter: params.get("quarter") ?? initialFilters.quarter,
+    assignee: params.get("assignee") ?? initialFilters.assignee,
+  }));
   const [editing, setEditing] = useState<Task | null>(null);
 
   // Persist view in the URL so deep links remember it.
