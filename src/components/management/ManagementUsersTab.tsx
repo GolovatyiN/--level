@@ -9,6 +9,7 @@ import {
   PowerOff,
   Search,
   Trash2,
+  UserPlus,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { useDeleteAdminUser } from "@/hooks/useAdminUsers";
 import { Spinner } from "@/components/UiState";
 import { RoleBadge } from "./RoleBadge";
 import { UserAccessEditor } from "./UserAccessEditor";
+import { InviteUserDialog } from "./InviteUserDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,6 +68,7 @@ export function ManagementUsersTab() {
   const [sort, setSort] = useState<Sort>("created_desc");
   const [editing, setEditing] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   // Build per-user department-name list once.
   const accessByUser = useMemo(() => {
@@ -164,6 +167,9 @@ export function ManagementUsersTab() {
               <SelectItem value="last_active">По активности</SelectItem>
             </SelectContent>
           </Select>
+          <Button size="sm" className="h-8 gap-1.5" onClick={() => setInviteOpen(true)}>
+            <UserPlus className="h-3.5 w-3.5" /> Добавить пользователя
+          </Button>
         </div>
       </div>
 
@@ -305,6 +311,8 @@ export function ManagementUsersTab() {
           user={editingUser}
         />
       )}
+
+      <InviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} />
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(v) => !v && setConfirmDelete(null)}>
         <AlertDialogContent>
