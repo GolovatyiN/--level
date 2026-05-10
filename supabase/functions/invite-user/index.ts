@@ -1,4 +1,4 @@
-// Edge function: invite a new user.
+// Edge function: create a new user and return a one-time login link.
 //
 // Caller must be authenticated and have role 'admin' or 'superadmin'.
 // Body:
@@ -12,13 +12,16 @@
 //   }
 //
 // Response:
-//   { user_id, email, action_link, invited: true }
-//   action_link is the one-shot URL that completes the signup.
+//   { user_id, email, action_link, created: true }
+//   action_link is the one-shot magic link the admin shares with the user.
 //
 // Implementation notes:
-//   * Uses generateLink({ type: 'invite' }) so we get the action_link back to
-//     show the admin (Supabase still emails the user, but having the URL means
-//     we can copy/paste even if email delivery is unreliable).
+//   * No email is sent. We use admin.createUser({ email_confirm: true }) which
+//     suppresses any signup email, then admin.generateLink({ type: 'magiclink' })
+//     which only returns the link (it does NOT trigger SMTP). The admin copies
+//     the link out of the UI and delivers it to the user any way they like.
+//   * The link lands on /auth/invite, where the user picks a password and
+//     finalises display_name.
 //   * Roles and department access are inserted via service_role so they
 //     bypass RLS — the admin's own role is verified at the top.
 
@@ -85,28 +88,41 @@ Deno.serve(async (req) => {
       if (!isSuper) return json({ error: "Только супер-админ может создавать супер-админов" }, 403);
     }
 
-    // 3. Generate the invite link.
-    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-      type: "invite",
+    // 3. Create the user (email_confirm=true means no signup email is sent).
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email,
-      options: {
-        data: display_name ? { display_name } : undefined,
-        redirectTo: redirect_to,
-      },
+      email_confirm: true,
+      user_metadata: display_name ? { display_name } : undefined,
     });
-    if (linkErr || !linkData?.user) {
-      return json({ error: linkErr?.message ?? "Не удалось создать приглашение" }, 400);
+    if (createErr || !created?.user) {
+      return json({ error: createErr?.message ?? "Не удалось создать пользователя" }, 400);
     }
-    const newUser = linkData.user;
-    const action_link = (linkData.properties as any)?.action_link as string | undefined;
+    const newUser = created.user;
 
-    // 4. Persist created_by_user_id on the profile so we know who invited them.
+    // 4. Generate a one-time magic link. generateLink does not send email —
+    // it only returns the action_link. The admin shares it manually.
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: { redirectTo: redirect_to },
+    });
+    if (linkErr) {
+      // User is already created; surface the error but include the user id so
+      // the admin can re-issue a link from /management later.
+      return json(
+        { error: `Пользователь создан, но ссылку выдать не удалось: ${linkErr.message}`, user_id: newUser.id },
+        500,
+      );
+    }
+    const action_link = (linkData?.properties as any)?.action_link as string | undefined;
+
+    // 5. Persist created_by_user_id on the profile so we know who invited them.
     await admin
       .from("profiles")
       .update({ created_by_user_id: caller.id })
       .eq("user_id", newUser.id);
 
-    // 5. Set role (overwrite any default 'user' role from the signup trigger).
+    // 6. Set role (overwrite any default 'user' role from the signup trigger).
     if (role) {
       await admin.from("user_roles").delete().eq("user_id", newUser.id);
       const { error: roleErr } = await admin
@@ -117,7 +133,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 6. Grant department access.
+    // 7. Grant department access.
     if (direction_ids.length > 0) {
       const rows = direction_ids.map((id) => ({
         user_id: newUser.id,
@@ -136,7 +152,7 @@ Deno.serve(async (req) => {
     }
 
     return json({
-      invited: true,
+      created: true,
       user_id: newUser.id,
       email: newUser.email,
       action_link,
