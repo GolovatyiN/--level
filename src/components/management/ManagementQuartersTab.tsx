@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
-import { Eye, EyeOff, Loader2, Plus } from "lucide-react";
+import { ExternalLink, Eye, EyeOff, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import { quarterLabelRu } from "@/lib/constants";
 const STATUS_OPTIONS: QuarterStatus[] = ["planned", "active", "closed", "archived"];
 
 export function ManagementQuartersTab() {
+  const navigate = useNavigate();
   const { data: quarters = [], isLoading } = useAllQuarters();
   const create = useCreateQuarter();
   const update = useUpdateQuarter();
@@ -56,15 +58,16 @@ export function ManagementQuartersTab() {
                 <th className="px-4 py-2.5 font-medium">Даты</th>
                 <th className="px-4 py-2.5 font-medium">Статус</th>
                 <th className="px-4 py-2.5 font-medium">Видимость</th>
+                <th className="px-4 py-2.5 font-medium">Рабочий экран</th>
                 <th className="px-4 py-2.5 font-medium w-10"></th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={5} className="py-10 text-center"><Spinner /></td></tr>
+                <tr><td colSpan={6} className="py-10 text-center"><Spinner /></td></tr>
               )}
               {!isLoading && quarters.length === 0 && (
-                <tr><td colSpan={5} className="py-10 text-center text-sm text-muted-foreground">Нет кварталов</td></tr>
+                <tr><td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">Нет кварталов</td></tr>
               )}
               {quarters.map((q) => (
                 <tr key={q.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30">
@@ -105,6 +108,23 @@ export function ManagementQuartersTab() {
                         <><EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> Скрыт</>
                       )}
                     </Button>
+                  </td>
+                  <td className="px-4 py-3">
+                    {/* "Открыть" доступен только для активных/запланированных
+                        видимых кварталов — закрытые/архивные открываются из
+                        раздела «Архив». */}
+                    {q.is_visible && (q.status === "active" || q.status === "planned") ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1 px-2 text-xs"
+                        onClick={() => navigate(`/quarters/${q.id}`)}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" /> Открыть
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Button
