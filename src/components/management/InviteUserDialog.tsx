@@ -113,7 +113,19 @@ export function InviteUserDialog({ open, onOpenChange }: Props) {
           redirect_to: redirectTo,
         },
       });
-      if (error) throw error;
+      // FunctionsHttpError часто прячет тело ответа в error.context. Достаём
+      // оттуда настоящее сообщение от edge-функции.
+      if (error) {
+        let detail: string | null = null;
+        const ctx = (error as any)?.context;
+        if (ctx?.json) {
+          try {
+            const j = await ctx.json();
+            detail = j?.error ?? null;
+          } catch {/* ignore */}
+        }
+        throw new Error(detail ?? error.message ?? "Ошибка edge-функции");
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
 
       const generatedLink = (data as any)?.action_link as string | undefined;
