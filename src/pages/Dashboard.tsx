@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { isPast, parseISO } from "date-fns";
 import {
   AlertTriangle,
@@ -24,25 +24,27 @@ import { useDirections, type Direction } from "@/hooks/useDirections";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { QUARTERS, currentQuarter, quarterLabelRu } from "@/lib/constants";
 
-type StatusFilter = "all" | "active" | "in_progress" | "at_risk" | "blocked" | "completed" | "overdue";
+type StatusKey = "all" | "in_progress" | "at_risk" | "blocked" | "completed" | "overdue";
 
 /**
  * Главная — аналитическая панель, не таск-менеджер. Сами задачи живут в
  * /tasks и в модалке отдела (см. DepartmentTasksDialog).
  *
  * Композиция:
- *  1. Шесть сверху — статусы задач (включая «Просрочено»)
+ *  1. Шесть сверху — статусы задач (включая «Просрочено»). Клик =
+ *     deep-link в /tasks с применённым фильтром.
  *  2. Виджет приоритетов с дельтой за неделю
  *  3. Виджет квартальных планов
  *  4. По отделам — компактные карточки (клик → модалка)
- *  5. Аналитика — 4 графика (donut статусов, donut приоритетов,
- *     горизонтальный бар прогресса, бар планов)
+ *  5. Аналитика — 4 графика
  *  6. Зоны внимания — самое срочное
  */
 export default function Dashboard() {
   const { data: tasks = [] } = useTasks();
   const { data: directions = [] } = useDirections();
   const { data: dynamicQuarters = [] } = useQuarters();
+  const navigate = useNavigate();
+
   const quarterList = useMemo(() => {
     const set = new Set<string>(QUARTERS);
     dynamicQuarters.forEach((q) => set.add(q.label));
@@ -50,26 +52,12 @@ export default function Dashboard() {
   }, [dynamicQuarters]);
 
   // Дашборд по умолчанию показывает текущий активный квартал, чтобы
-  // данные разных периодов не смешивались. Переключение на «Все» / другой
-  // квартал — через выпадайку в шапке.
+  // данные разных периодов не смешивались.
   const [quarter, setQuarter] = useState<string>(currentQuarter());
   const [direction, setDirection] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [departmentDialog, setDepartmentDialog] = useState<Direction | null>(null);
 
-  // Honor `?status=overdue` etc. so deep links from the sidebar pill or
-  // notifications land on a pre-filtered view.
-  const [searchParams] = useSearchParams();
-  useEffect(() => {
-    const s = searchParams.get("status");
-    const valid: StatusFilter[] = [
-      "all", "active", "in_progress", "at_risk", "blocked", "completed", "overdue",
-    ];
-    if (s && (valid as string[]).includes(s)) setStatusFilter(s as StatusFilter);
-  }, [searchParams]);
-
-  // baseFiltered respects quarter+direction but ignores statusFilter — the
-  // status cards are toggle filters, not the source of truth for totals.
+  // baseFiltered respects quarter+direction.
   const baseFiltered = useMemo(() => {
     return tasks.filter((t) => {
       if (t.archived) return false;
@@ -78,6 +66,18 @@ export default function Dashboard() {
       return true;
     });
   }, [tasks, quarter, direction]);
+
+  /**
+   * Клик по статусной карточке — переход в /tasks с пред-применённым
+   * фильтром по статусу + текущими квартал/отдел из шапки дашборда.
+   */
+  const goToTasks = (key: StatusKey) => {
+    const params = new URLSearchParams();
+    if (key !== "all") params.set("status", key);
+    if (quarter !== "all") params.set("quarter", quarter);
+    if (direction !== "all") params.set("direction", direction);
+    navigate(`/tasks${params.toString() ? `?${params.toString()}` : ""}`);
+  };
 
   const total = baseFiltered.length;
   const inProgress = baseFiltered.filter((t) => t.status === "in_progress").length;
@@ -89,12 +89,12 @@ export default function Dashboard() {
   ).length;
 
   const stats = [
-    { label: "Всего", value: total, icon: ListTodo, key: "all" as StatusFilter, color: "text-foreground" },
-    { label: "В работе", value: inProgress, icon: Zap, key: "in_progress" as StatusFilter, color: "text-info" },
-    { label: "Под риском", value: atRisk, icon: AlertTriangle, key: "at_risk" as StatusFilter, color: "text-warning" },
-    { label: "Блокеры", value: blocked, icon: Clock, key: "blocked" as StatusFilter, color: "text-destructive" },
-    { label: "Завершено", value: completed, icon: CheckCircle2, key: "completed" as StatusFilter, color: "text-success" },
-    { label: "Просрочено", value: overdue, icon: AlertTriangle, key: "overdue" as StatusFilter, color: "text-destructive" },
+    { label: "Всего", value: total, icon: ListTodo, key: "all" as StatusKey, color: "text-foreground" },
+    { label: "В работе", value: inProgress, icon: Zap, key: "in_progress" as StatusKey, color: "text-info" },
+    { label: "Под риском", value: atRisk, icon: AlertTriangle, key: "at_risk" as StatusKey, color: "text-warning" },
+    { label: "Блокеры", value: blocked, icon: Clock, key: "blocked" as StatusKey, color: "text-destructive" },
+    { label: "Завершено", value: completed, icon: CheckCircle2, key: "completed" as StatusKey, color: "text-success" },
+    { label: "Просрочено", value: overdue, icon: AlertTriangle, key: "overdue" as StatusKey, color: "text-destructive" },
   ];
 
   return (
@@ -121,11 +121,11 @@ export default function Dashboard() {
                 {directions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            {(quarter !== currentQuarter() || direction !== "all" || statusFilter !== "all") && (
+            {(quarter !== currentQuarter() || direction !== "all") && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => { setQuarter(currentQuarter()); setDirection("all"); setStatusFilter("all"); }}
+                onClick={() => { setQuarter(currentQuarter()); setDirection("all"); }}
               >
                 Сброс
               </Button>
@@ -137,26 +137,24 @@ export default function Dashboard() {
       <div className="space-y-8 p-4 sm:p-8">
         {/* 1. Six status cards */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          {stats.map((s, idx) => {
-            const active = statusFilter === s.key;
-            return (
-              <button
-                key={s.label}
-                onClick={() => setStatusFilter(active ? "all" : s.key)}
-                style={{ animationDelay: `${idx * 40}ms` }}
-                className={`group hover-lift animate-fade-in text-left rounded-xl border bg-card p-4 shadow-card hover:border-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "border-foreground/60 ring-1 ring-foreground/40" : "border-border"}`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground">{s.label}</span>
-                  <s.icon className={`h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 ${s.color}`} />
-                </div>
-                <AnimatedNumber
-                  value={typeof s.value === "number" ? s.value : 0}
-                  className={`mt-2 block text-3xl font-semibold tabular-nums ${s.color}`}
-                />
-              </button>
-            );
-          })}
+          {stats.map((s, idx) => (
+            <button
+              key={s.label}
+              onClick={() => goToTasks(s.key)}
+              style={{ animationDelay: `${idx * 40}ms` }}
+              className="group hover-lift animate-fade-in text-left rounded-xl border border-border bg-card p-4 shadow-card hover:border-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              title={s.key === "all" ? "Открыть все задачи" : `Открыть задачи: ${s.label.toLowerCase()}`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">{s.label}</span>
+                <s.icon className={`h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 ${s.color}`} />
+              </div>
+              <AnimatedNumber
+                value={typeof s.value === "number" ? s.value : 0}
+                className={`mt-2 block text-3xl font-semibold tabular-nums ${s.color}`}
+              />
+            </button>
+          ))}
         </div>
 
         {/* 2. Priorities */}
