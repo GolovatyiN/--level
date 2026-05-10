@@ -53,25 +53,43 @@ const CARDS: Card[] = [
 
 const DAYS_7 = 7 * 24 * 60 * 60 * 1000;
 
+interface Props {
+  /** Optional quarter scope — narrows counts to this quarter only. */
+  quarter?: string;
+  /** Optional direction scope — narrows counts to this direction only. */
+  direction?: string;
+}
+
 /**
  * Priority workload widget. Counts active (non-archived, non-completed) tasks
  * per priority. A toggle includes completed tasks for retrospective views.
  *
- * Each card is a deep link into /tasks with `?priority=...` so the existing
- * Tasks page restores filtered state on mount.
+ * Respects the dashboard's quarter and direction scope so the numbers here
+ * agree with the status cards above. Without scoping the widget would happily
+ * count tasks from other quarters and confuse the user.
+ *
+ * Each card is a deep link into /tasks with `?priority=...&quarter=...` so
+ * the Tasks page lands on the same scope.
  *
  * The "weekly delta" is the count of tasks of this priority created in the
  * last 7 days minus those created the 7 days before — a simple "is workload
  * growing or shrinking" signal that doesn't require a separate history log.
  */
-export function PrioritiesSummaryWidget() {
+export function PrioritiesSummaryWidget({ quarter, direction }: Props = {}) {
   const { data: tasks = [] } = useTasks();
   const [showCompleted, setShowCompleted] = useState(false);
   const navigate = useNavigate();
 
   const visible = useMemo<Task[]>(
-    () => tasks.filter((t) => !t.archived && (showCompleted || t.status !== "completed")),
-    [tasks, showCompleted],
+    () =>
+      tasks.filter((t) => {
+        if (t.archived) return false;
+        if (!showCompleted && t.status === "completed") return false;
+        if (quarter && quarter !== "all" && t.quarter !== quarter) return false;
+        if (direction && direction !== "all" && t.direction_id !== direction) return false;
+        return true;
+      }),
+    [tasks, showCompleted, quarter, direction],
   );
 
   // Pre-compute counts and weekly deltas in one pass.
@@ -97,6 +115,8 @@ export function PrioritiesSummaryWidget() {
 
   const goToList = (priority: TaskPriority) => {
     const params = new URLSearchParams({ priority, status: showCompleted ? "all" : "active" });
+    if (quarter && quarter !== "all") params.set("quarter", quarter);
+    if (direction && direction !== "all") params.set("direction", direction);
     navigate(`/tasks?${params.toString()}`);
   };
 

@@ -29,22 +29,38 @@ const TOOLTIP_STYLE = {
   padding: "6px 10px",
 };
 
+interface Props {
+  /** Optional quarter scope from the dashboard header. */
+  quarter?: string;
+  /** Optional direction scope from the dashboard header. */
+  direction?: string;
+}
+
 /**
  * Four compact charts that answer "where do we stand?":
  *   1. Task statuses (donut) — what state is work in.
  *   2. Task priorities (donut) — how heavy is the load.
  *   3. Department progress (horizontal bar) — who's lagging.
  *   4. Quarterly plan statuses (vertical bar) — readiness of planning.
+ *
+ * All chart datasets respect the dashboard-level quarter and direction
+ * scope so the charts stay in sync with the status cards above.
  */
-export function DashboardCharts() {
+export function DashboardCharts({ quarter, direction }: Props = {}) {
   const { data: tasks = [] } = useTasks();
   const { data: directions = [] } = useDirections();
   const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
 
   const active = useMemo(
-    () => tasks.filter((t) => !t.archived),
-    [tasks],
+    () =>
+      tasks.filter((t) => {
+        if (t.archived) return false;
+        if (quarter && quarter !== "all" && t.quarter !== quarter) return false;
+        if (direction && direction !== "all" && t.direction_id !== direction) return false;
+        return true;
+      }),
+    [tasks, quarter, direction],
   );
 
   // ---------------------------------------------------------------------
