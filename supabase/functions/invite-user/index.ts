@@ -89,15 +89,44 @@ Deno.serve(async (req) => {
     }
 
     // 3. Create the user (email_confirm=true means no signup email is sent).
-    const { data: created, error: createErr } = await admin.auth.admin.createUser({
-      email,
-      email_confirm: true,
-      user_metadata: display_name ? { display_name } : undefined,
-    });
-    if (createErr || !created?.user) {
-      return json({ error: createErr?.message ?? "Не удалось создать пользователя" }, 400);
+    // If the user already exists (from a previous invite/signup), reuse them
+    // and just issue a fresh magic link — no need to fail.
+    let newUser: any = null;
+    {
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        user_metadata: display_name ? { display_name } : undefined,
+      });
+      if (created?.user) {
+        newUser = created.user;
+      } else {
+        const msg = (createErr?.message ?? "").toLowerCase();
+        const alreadyExists =
+          msg.includes("already registered") ||
+          msg.includes("already exists") ||
+          msg.includes("duplicate") ||
+          (createErr as any)?.status === 422;
+        if (!alreadyExists) {
+          return json({ error: createErr?.message ?? "Не удалось создать пользователя" }, 400);
+        }
+        // Find the existing user by email — listUsers paginates, so we filter.
+        const { data: list, error: listErr } = await admin.auth.admin.listUsers({
+          page: 1,
+          perPage: 200,
+        });
+        if (listErr) {
+          return json({ error: `Не удалось найти существующего пользователя: ${listErr.message}` }, 500);
+        }
+        const existing = (list?.users ?? []).find(
+          (u: any) => (u.email ?? "").toLowerCase() === email,
+        );
+        if (!existing) {
+          return json({ error: "Пользователь уже существует, но не найден в auth" }, 500);
+        }
+        newUser = existing;
+      }
     }
-    const newUser = created.user;
 
     // 4. Generate a one-time magic link. generateLink does not send email —
     // it only returns the action_link. The admin shares it manually.
@@ -107,8 +136,6 @@ Deno.serve(async (req) => {
       options: { redirectTo: redirect_to },
     });
     if (linkErr) {
-      // User is already created; surface the error but include the user id so
-      // the admin can re-issue a link from /management later.
       return json(
         { error: `Пользователь создан, но ссылку выдать не удалось: ${linkErr.message}`, user_id: newUser.id },
         500,
@@ -158,6 +185,7 @@ Deno.serve(async (req) => {
       action_link,
     });
   } catch (err: any) {
-    return json({ error: err?.message ?? "Внутренняя ошибка" }, 500);
+    console.error("invite-user fatal", err);
+    return json({ error: err?.message ?? "Внутренняя ошибка", stack: err?.stack }, 500);
   }
 });
