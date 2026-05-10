@@ -4,7 +4,6 @@ import {
   ListChecks,
   Layers,
   Archive,
-  LogOut,
   Plus,
   Target,
   ClipboardCheck,
@@ -15,7 +14,6 @@ import {
   Settings2,
 } from "lucide-react";
 import { isPast, parseISO } from "date-fns";
-import { useAuth } from "@/contexts/AuthContext";
 import { useCanManage } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useState } from "react";
@@ -23,6 +21,7 @@ import { TaskDialog } from "@/components/TaskDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { UserMenu } from "@/components/UserMenu";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 import { useNotificationsRealtime } from "@/hooks/useNotifications";
 import { useTasks } from "@/hooks/useTasks";
@@ -38,7 +37,6 @@ const NAV = [
 ];
 
 export function AppLayout() {
-  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [openCreate, setOpenCreate] = useState(false);
@@ -79,11 +77,6 @@ export function AppLayout() {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/auth", { replace: true });
-  };
 
   const sidebarContent = (
     <>
@@ -186,17 +179,9 @@ export function AppLayout() {
         )}
         <NotificationsBell />
         <ThemeToggle />
-        <div className="mt-1 truncate px-2 pt-1 text-xs text-muted-foreground" title={user?.email ?? undefined}>
-          {user?.email}
+        <div className="pt-1">
+          <UserMenu />
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-2 text-muted-foreground"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-4 w-4" /> Выйти
-        </Button>
       </div>
     </>
   );

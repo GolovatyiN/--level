@@ -15,6 +15,8 @@ import DirectionsPage from "./pages/Directions.tsx";
 import Archive from "./pages/Archive.tsx";
 import KpiPage from "./pages/Kpi.tsx";
 import Management from "./pages/Management.tsx";
+import Profile from "./pages/Profile.tsx";
+import AuthInvite from "./pages/AuthInvite.tsx";
 import { Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -48,6 +50,7 @@ const App = () => (
           <AuthProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/invite" element={<AuthInvite />} />
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/tasks" element={<Tasks />} />
@@ -62,6 +65,7 @@ const App = () => (
                 <Route path="/directions" element={<DirectionsPage />} />
                 <Route path="/archive" element={<Archive />} />
                 <Route path="/management" element={<Management />} />
+                <Route path="/profile" element={<Profile />} />
                 {/* Старая «Админка» расформирована — её функции перенесены
                     в раздел «Управление». Сохраняем редирект, чтобы старые
                     закладки и нотификации продолжали работать. */}
