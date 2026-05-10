@@ -81,6 +81,7 @@ export function useGlobalShortcuts({ onOpenPalette, onNewTask }: Options) {
         const k = e.key.toLowerCase();
         const route =
           k === "d" ? "/" :
+          k === "l" ? "/plans" :
           k === "t" ? "/tasks" :
           k === "k" ? "/tasks?view=kanban" :
           k === "p" ? "/kpi" :

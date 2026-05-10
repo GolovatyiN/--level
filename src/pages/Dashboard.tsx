@@ -9,6 +9,7 @@ import { TaskCard } from "@/components/TaskCard";
 import { TaskDialog } from "@/components/TaskDialog";
 import { EmptyState, PageLoader } from "@/components/UiState";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { PlansSummaryWidget } from "@/components/PlansSummaryWidget";
 import type { Task } from "@/hooks/useTasks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -132,6 +133,8 @@ export default function Dashboard() {
             );
           })}
         </div>
+
+        <PlansSummaryWidget />
 
         <div>
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground">По отделам</h2>
