@@ -18,11 +18,11 @@ export type PlanStatus =
   | "archived";
 
 export const PLAN_STATUS_LABELS: Record<PlanStatus, string> = {
-  draft: "Черновик",
+  draft: "В процессе",
   on_review: "На согласовании",
-  changes_requested: "На доработке",
-  approved: "Утверждён",
-  in_progress: "В работе",
+  changes_requested: "Нужны правки",
+  approved: "Готов",
+  in_progress: "Выполняется",
   at_risk: "Под риском",
   blocked: "Заблокирован",
   completed: "Завершён",
@@ -42,18 +42,28 @@ export const PLAN_STATUS_ORDER: PlanStatus[] = [
   "archived",
 ];
 
-/** Tailwind status colours — read by PlanStatusBadge. */
+/**
+ * Tailwind status tones — read by PlanStatusBadge / matrix cells.
+ *
+ * Spec mapping (Бэклог=neutral, В процессе=info, На согласовании=warning,
+ * Нужны правки=destructive, Готов=success, Выполняется=info, Завершён=success).
+ * "Бэклог" itself is a synthetic status — when no plan row exists yet.
+ */
 export const PLAN_STATUS_TONE: Record<PlanStatus, "neutral" | "info" | "warning" | "success" | "destructive"> = {
-  draft: "neutral",
-  on_review: "info",
-  changes_requested: "warning",
-  approved: "success",
-  in_progress: "info",
-  at_risk: "warning",
-  blocked: "destructive",
-  completed: "success",
-  archived: "neutral",
+  draft:             "info",         // В процессе → синий
+  on_review:         "warning",      // На согласовании → жёлтый
+  changes_requested: "destructive",  // Нужны правки → красный
+  approved:          "success",      // Готов → зелёный
+  in_progress:       "info",         // Выполняется → синий
+  at_risk:           "warning",
+  blocked:           "destructive",
+  completed:         "success",      // Завершён → зелёный
+  archived:          "neutral",
 };
+
+/** Synthetic status when no plan row exists for this department × quarter. */
+export const BACKLOG_TONE = "neutral" as const;
+export const BACKLOG_LABEL = "Бэклог";
 
 export type DepartmentPlan = {
   id: string;

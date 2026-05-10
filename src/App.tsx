@@ -13,8 +13,8 @@ import PlanDetail from "./pages/PlanDetail.tsx";
 import DirectionsPage from "./pages/Directions.tsx";
 import Archive from "./pages/Archive.tsx";
 import KpiPage from "./pages/Kpi.tsx";
-import Admin from "./pages/Admin.tsx";
 import Management from "./pages/Management.tsx";
+import { Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./layouts/AppLayout";
@@ -44,7 +44,10 @@ const App = () => (
                 <Route path="/directions" element={<DirectionsPage />} />
                 <Route path="/archive" element={<Archive />} />
                 <Route path="/management" element={<Management />} />
-                <Route path="/admin" element={<Admin />} />
+                {/* Старая «Админка» расформирована — её функции перенесены
+                    в раздел «Управление». Сохраняем редирект, чтобы старые
+                    закладки и нотификации продолжали работать. */}
+                <Route path="/admin" element={<Navigate to="/management" replace />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

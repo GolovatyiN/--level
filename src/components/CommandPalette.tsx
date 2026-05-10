@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Archive,
+  ClipboardCheck,
   Layers,
   LayoutDashboard,
   ListChecks,
@@ -23,7 +24,7 @@ import {
 import { useTasks, type Task } from "@/hooks/useTasks";
 import { useKpis, type Kpi } from "@/hooks/useKpis";
 import { useDirections } from "@/hooks/useDirections";
-import { useIsSuperadmin } from "@/hooks/useUserRole";
+import { useCanManage } from "@/hooks/useUserRole";
 import { TaskDialog } from "@/components/TaskDialog";
 import { KpiDialog } from "@/components/KpiDialog";
 
@@ -38,7 +39,7 @@ interface Props {
  */
 export function CommandPalette({ open, onOpenChange }: Props) {
   const navigate = useNavigate();
-  const isSuper = useIsSuperadmin();
+  const canManage = useCanManage();
   const { data: tasks = [] } = useTasks(true);
   const { data: kpis = [] } = useKpis();
   const { data: directions = [] } = useDirections();
@@ -106,6 +107,11 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               Панель управления
               <CommandShortcut>G D</CommandShortcut>
             </CommandItem>
+            <CommandItem onSelect={() => run(() => navigate("/plans"))}>
+              <ClipboardCheck className="mr-2 h-4 w-4" />
+              Квартальные планы
+              <CommandShortcut>G L</CommandShortcut>
+            </CommandItem>
             <CommandItem onSelect={() => run(() => navigate("/tasks"))}>
               <ListChecks className="mr-2 h-4 w-4" />
               Планы и задачи
@@ -129,10 +135,10 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               <Archive className="mr-2 h-4 w-4" />
               Архив
             </CommandItem>
-            {isSuper && (
-              <CommandItem onSelect={() => run(() => navigate("/admin"))}>
+            {canManage && (
+              <CommandItem onSelect={() => run(() => navigate("/management"))}>
                 <ShieldCheck className="mr-2 h-4 w-4" />
-                Администрирование
+                Управление
               </CommandItem>
             )}
           </CommandGroup>
