@@ -1,20 +1,11 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { isPast, parseISO } from "date-fns";
 import { useTasks } from "@/hooks/useTasks";
 import { useDirections } from "@/hooks/useDirections";
 import { usePlans, PLAN_STATUS_LABELS, type PlanStatus } from "@/hooks/usePlans";
+import { cn } from "@/lib/utils";
 
 /** Static palette so chart colours stay stable across themes. */
 const COLOURS = {
@@ -108,17 +99,20 @@ export function DashboardCharts() {
   }, [directions, active]);
 
   // ---------------------------------------------------------------------
-  // 4. Quarterly plan statuses
+  // 4. Quarterly plan statuses — drop empty buckets so the chart focuses
+  //    on what's actually in the system.
   // ---------------------------------------------------------------------
   const planStatusData = useMemo(() => {
     const buckets: PlanStatus[] = [
       "draft", "on_review", "changes_requested", "approved", "in_progress", "completed",
     ];
-    return buckets.map((s) => ({
-      name: PLAN_STATUS_LABELS[s],
-      value: plans.filter((p) => p.status === s).length,
-      key: s,
-    }));
+    return buckets
+      .map((s) => ({
+        name: PLAN_STATUS_LABELS[s],
+        value: plans.filter((p) => p.status === s).length,
+        key: s,
+      }))
+      .filter((d) => d.value > 0);
   }, [plans]);
 
   return (
@@ -187,41 +181,37 @@ export function DashboardCharts() {
           {deptData.length === 0 ? (
             <Empty />
           ) : (
-            <div style={{ height: 32 + deptData.length * 28 }}>
-              <ResponsiveContainer>
-                <BarChart
-                  data={deptData}
-                  layout="vertical"
-                  margin={{ top: 4, right: 12, left: 0, bottom: 0 }}
-                  barSize={16}
-                  onClick={(d: any) => {
-                    // Recharts puts the clicked datum in d.activePayload[0].payload.
-                    const id = d?.activePayload?.[0]?.payload?.id;
-                    if (id) navigate(`/tasks?direction=${id}`);
-                  }}
-                >
-                  <XAxis type="number" hide domain={[0, 100]} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    tickLine={false}
-                    axisLine={false}
-                    width={110}
-                    fontSize={11}
-                    stroke="hsl(var(--muted-foreground))"
-                  />
-                  <Tooltip
-                    contentStyle={TOOLTIP_STYLE}
-                    formatter={(v: number) => [`${v}%`, "Прогресс"]}
-                  />
-                  <Bar dataKey="pct" radius={[0, 4, 4, 0]}>
-                    {deptData.map((d) => (
-                      <Cell key={d.id} fill={d.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            // Кастомный список вместо recharts'a — он плохо рендерит
+            // горизонтальный bar-chart при 1-2 элементах и при 0% значениях
+            // (бар нулевой ширины невидим, остаётся одинокая ось).
+            <ul className="space-y-2.5 py-1">
+              {deptData.map((d) => (
+                <li key={d.id}>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/tasks?direction=${d.id}`)}
+                    className="group block w-full text-left transition-opacity hover:opacity-90"
+                  >
+                    <div className="mb-1 flex items-center gap-2 text-xs">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: d.color }} />
+                      <span className="font-medium">{d.name}</span>
+                      <span className="ml-auto text-muted-foreground tabular-nums">
+                        {d.pct}% · {d.total} {d.total === 1 ? "задача" : d.total < 5 ? "задачи" : "задач"}
+                      </span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full transition-[width] duration-700 ease-out"
+                        style={{
+                          width: `${Math.max(d.pct, d.total > 0 ? 2 : 0)}%`,
+                          backgroundColor: d.color,
+                        }}
+                      />
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </ChartCard>
 
@@ -229,36 +219,38 @@ export function DashboardCharts() {
           title="Квартальные планы по статусам"
           subtitle="Готовность планирования"
         >
-          {plans.length === 0 ? (
+          {planStatusData.length === 0 ? (
             <Empty />
           ) : (
-            <div className="h-56">
-              <ResponsiveContainer>
-                <BarChart
-                  data={planStatusData}
-                  margin={{ top: 4, right: 12, left: 0, bottom: 0 }}
-                >
-                  <XAxis
-                    dataKey="name"
-                    fontSize={10}
-                    tickLine={false}
-                    axisLine={false}
-                    interval={0}
-                    stroke="hsl(var(--muted-foreground))"
-                  />
-                  <YAxis
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    allowDecimals={false}
-                    width={28}
-                    stroke="hsl(var(--muted-foreground))"
-                  />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="value" fill={COLOURS.bar} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            // Список чипов вместо bar-chart — для 1-3 значений выглядит
+            // читабельнее, плюс цвет каждого столбца берётся из
+            // соответствующего тона статуса.
+            <ul className="space-y-2 py-1">
+              {planStatusData.map((s) => {
+                const tone =
+                  s.key === "approved" || s.key === "completed" ? "bg-success" :
+                  s.key === "on_review" ? "bg-warning" :
+                  s.key === "changes_requested" ? "bg-destructive" :
+                  s.key === "in_progress" || s.key === "draft" ? "bg-info" :
+                  "bg-foreground";
+                const max = Math.max(...planStatusData.map((x) => x.value));
+                const ratio = max > 0 ? (s.value / max) * 100 : 0;
+                return (
+                  <li key={s.key}>
+                    <div className="mb-1 flex items-center justify-between text-xs">
+                      <span className="font-medium">{s.name}</span>
+                      <span className="text-muted-foreground tabular-nums">{s.value}</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={cn("h-full rounded-full transition-[width] duration-700", tone)}
+                        style={{ width: `${Math.max(ratio, 2)}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </ChartCard>
       </div>
