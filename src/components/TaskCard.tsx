@@ -43,6 +43,14 @@ export function TaskCard({ task, direction, onClick, isDragging }: Props) {
             <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
               {task.quarter}
             </span>
+            {task.direction_tag && (
+              <span
+                className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-foreground"
+                title="Направление"
+              >
+                {task.direction_tag}
+              </span>
+            )}
             {task.deadline && (
               <span
                 className={cn(

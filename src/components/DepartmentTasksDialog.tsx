@@ -25,7 +25,10 @@ type Filter =
   | "medium"
   | "overdue"
   | "in_progress"
-  | "completed";
+  | "completed"
+  // direction-tag filter rendered as `dir:<value>` so we can mix it with
+  // the static set above.
+  | `dir:${string}`;
 
 interface Props {
   open: boolean;
@@ -76,6 +79,17 @@ export function DepartmentTasksDialog({ open, onOpenChange, direction }: Props) 
     return s;
   }, [tasks]);
 
+  // Уникальные направления только в текущей выборке задач отдела.
+  // Никакого глобального справочника — фильтр живёт ровно по тому, что есть.
+  const uniqueDirections = useMemo(() => {
+    const set = new Set<string>();
+    tasks.forEach((t) => {
+      const v = t.direction_tag?.trim();
+      if (v) set.add(v);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [tasks]);
+
   const filtered = useMemo(() => {
     let r = tasks;
     if (filter === "critical") r = r.filter((t) => t.priority === "critical");
@@ -85,11 +99,15 @@ export function DepartmentTasksDialog({ open, onOpenChange, direction }: Props) 
       r = r.filter((t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed");
     else if (filter === "in_progress") r = r.filter((t) => t.status === "in_progress");
     else if (filter === "completed") r = r.filter((t) => t.status === "completed");
+    else if (filter.startsWith("dir:")) {
+      const want = filter.slice(4);
+      r = r.filter((t) => (t.direction_tag ?? "").trim() === want);
+    }
 
     const s = search.trim().toLowerCase();
     if (s) {
       r = r.filter((t) => {
-        const hay = `${t.title} ${t.description ?? ""} ${t.assignee ?? ""}`.toLowerCase();
+        const hay = `${t.title} ${t.description ?? ""} ${t.assignee ?? ""} ${t.direction_tag ?? ""}`.toLowerCase();
         return hay.includes(s);
       });
     }
@@ -145,6 +163,22 @@ export function DepartmentTasksDialog({ open, onOpenChange, direction }: Props) 
                 Завершённые · {stats.completed}
               </Chip>
             </div>
+            {uniqueDirections.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 border-t border-border/50 pt-2">
+                <span className="self-center text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Направления:
+                </span>
+                {uniqueDirections.map((d) => (
+                  <Chip
+                    key={d}
+                    active={filter === `dir:${d}`}
+                    onClick={() => setFilter(filter === `dir:${d}` ? "all" : (`dir:${d}` as Filter))}
+                  >
+                    {d}
+                  </Chip>
+                ))}
+              </div>
+            )}
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -183,6 +217,11 @@ export function DepartmentTasksDialog({ open, onOpenChange, direction }: Props) 
                             <span className="rounded bg-secondary px-1.5 py-0.5">
                               {quarterLabelRu(t.quarter)}
                             </span>
+                            {t.direction_tag && (
+                              <span className="rounded border border-border bg-background px-1.5 py-0.5 font-medium text-foreground">
+                                {t.direction_tag}
+                              </span>
+                            )}
                             {t.deadline && (
                               <span
                                 className={cn(

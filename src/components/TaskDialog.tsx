@@ -23,9 +23,8 @@ import { Trash2, Archive, ArchiveRestore, History, Loader2 } from "lucide-react"
 import { useKpis } from "@/hooks/useKpis";
 import { useTaskKpiLinks, useLinkKpiTask, useUnlinkKpiTask, useUpdateKpiTaskLink } from "@/hooks/useKpiActivity";
 import { Target, Plus } from "lucide-react";
-import { useQuarters, useCreateQuarter, useDeleteQuarter, useToggleEntityTag } from "@/hooks/useTaxonomies";
+import { useQuarters, useCreateQuarter, useDeleteQuarter } from "@/hooks/useTaxonomies";
 import { EditableSelect } from "@/components/EditableSelect";
-import { TagPicker } from "@/components/TagPicker";
 import { UserPicker } from "@/components/UserPicker";
 
 interface Props {
@@ -49,12 +48,10 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
   const { data: quarters = [] } = useQuarters();
   const createQuarter = useCreateQuarter();
   const deleteQuarter = useDeleteQuarter();
-  const toggleTaskTag = useToggleEntityTag("task");
   const [newKpiId, setNewKpiId] = useState<string>("");
   const [newContribution, setNewContribution] = useState<string>("1");
   // Draft state for "create" mode (no task.id yet)
   const [draftLinks, setDraftLinks] = useState<{ kpi_id: string; contribution: number }[]>([]);
-  const [draftTagIds, setDraftTagIds] = useState<string[]>([]);
 
   const [form, setForm] = useState<Partial<Task>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -76,7 +73,6 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
         }
       );
       setDraftLinks([]);
-      setDraftTagIds([]);
       setNewKpiId("");
       setNewContribution("1");
       setConfirmDelete(false);
@@ -106,17 +102,14 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
       const newId: string | undefined = created?.id ?? created?.[0]?.id;
       if (newId) {
         const linksToPersist = pendingLink ? [...draftLinks, pendingLink] : draftLinks;
-        // Buffered KPI links + tags. Individual failures surface via the
-        // hook's onError toast — don't let one failure keep the dialog stuck
-        // open with a phantom "unsaved" task that's actually already created.
-        await Promise.allSettled([
-          ...linksToPersist.map((l) =>
+        // Buffered KPI links. Individual failures surface via the hook's
+        // onError toast — don't let one failure keep the dialog stuck open
+        // with a phantom "unsaved" task that's actually already created.
+        await Promise.allSettled(
+          linksToPersist.map((l) =>
             linkKpi.mutateAsync({ kpi_id: l.kpi_id, task_id: newId, contribution: l.contribution }),
           ),
-          ...draftTagIds.map((tagId) =>
-            toggleTaskTag.mutateAsync({ entityId: newId, tagId, attach: true }),
-          ),
-        ]);
+        );
       }
     }
     onOpenChange(false);
@@ -268,12 +261,18 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
           </div>
 
           <div className="grid gap-1.5">
-            <Label>Теги</Label>
-            {task ? (
-              <TagPicker entity="task" entityId={task.id} />
-            ) : (
-              <TagPicker entity="task" selectedIds={draftTagIds} onChange={setDraftTagIds} />
-            )}
+            <Label htmlFor="task-direction-tag">Направление</Label>
+            <Input
+              id="task-direction-tag"
+              value={form.direction_tag ?? ""}
+              onChange={(e) => set("direction_tag", e.target.value)}
+              placeholder="ИИ, HR, Процессы, Отчётность..."
+              maxLength={64}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Свободный текст. Сохраняется только в этой задаче — не попадает
+              в общий справочник.
+            </p>
           </div>
 
           <div className="rounded-md border border-border bg-muted/30 p-3">

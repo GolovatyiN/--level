@@ -138,6 +138,7 @@ function TableView({ filters, onEdit }: { filters: FiltersState; onEdit: (t: Tas
             <TableRow>
               <TableHead>Отдел</TableHead>
               <TableHead>Задача</TableHead>
+              <TableHead>Направление</TableHead>
               <TableHead>Квартал</TableHead>
               <TableHead>Заказчик</TableHead>
               <TableHead>Приоритет</TableHead>
@@ -166,6 +167,15 @@ function TableView({ filters, onEdit }: { filters: FiltersState; onEdit: (t: Tas
                     <div className="font-medium">{t.title}</div>
                     {t.description && (
                       <div className="truncate text-xs text-muted-foreground">{t.description}</div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {t.direction_tag ? (
+                      <span className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+                        {t.direction_tag}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{t.quarter}</TableCell>
@@ -198,7 +208,7 @@ function TableView({ filters, onEdit }: { filters: FiltersState; onEdit: (t: Tas
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="py-12 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="py-12 text-center text-muted-foreground">
                   {isLoading && tasks.length === 0 ? (
                     <span className="inline-flex items-center gap-2"><Spinner /> Загрузка...</span>
                   ) : tasks.length === 0 ? (
