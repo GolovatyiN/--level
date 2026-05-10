@@ -157,8 +157,8 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* 2. Priorities */}
-        <PrioritiesSummaryWidget />
+        {/* 2. Priorities — scoped to the dashboard's quarter+direction. */}
+        <PrioritiesSummaryWidget quarter={quarter} direction={direction} />
 
         {/* 3. Quarterly plans */}
         <PlansSummaryWidget />
@@ -239,7 +239,7 @@ export default function Dashboard() {
         </div>
 
         {/* 5. Аналитика — 4 графика. */}
-        <DashboardCharts />
+        <DashboardCharts quarter={quarter} direction={direction} />
 
         {/* 6. Зоны внимания. */}
         <RiskZonesWidget />
