@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { ThemeProvider } from "next-themes";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -40,6 +41,26 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Если Supabase отдал ошибку auth в URL hash (#error=access_denied&...) и при
+ * этом «срезал» путь до `/` — это значит redirect URL не в allowlist проекта.
+ * Чтобы не показывать пустой Dashboard / редирект на /auth без объяснений,
+ * перебрасываем на /auth/invite с сохранённым hash — там есть UI для разбора
+ * ошибок (otp_expired и т.д.).
+ */
+const AuthHashRedirect = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    if (location.pathname === "/auth/invite") return;
+    const h = window.location.hash;
+    if (h && /[#&]error(_code)?=/.test(h)) {
+      navigate({ pathname: "/auth/invite", hash: h }, { replace: true });
+    }
+  }, [location.pathname, navigate]);
+  return null;
+};
+
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="company-hub-theme">
     <QueryClientProvider client={queryClient}>
@@ -48,6 +69,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <AuthHashRedirect />
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/invite" element={<AuthInvite />} />
