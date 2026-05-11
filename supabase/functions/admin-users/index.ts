@@ -80,14 +80,54 @@ Deno.serve(async (req) => {
         return json({ error: 'Удалить супер-админа может только супер-админ' }, 403);
       }
 
-      // The DB schema declares all FKs to auth.users with either ON DELETE
-      // CASCADE (profiles, user_roles, user_department_access, notifications
-      // recipient) or ON DELETE SET NULL (created_by, actor_id, head_user_id,
-      // assignee_id, owner_id, granted_by, approved_by, etc.), so we can just
-      // delete the auth user and let Postgres clean up.
-      const { error } = await admin.auth.admin.deleteUser(targetId);
-      if (error) throw error;
-      return json({ ok: true });
+      // Defense-in-depth: even though FKs to auth.users are declared CASCADE,
+      // we have seen cases where the row in `profiles` survives the auth
+      // delete (some triggers / replicas). So we explicitly clear our app
+      // tables first. The deletes are idempotent — if cascade already fired,
+      // these are no-ops.
+      const cleanupErrors: string[] = [];
+      for (const step of [
+        () => admin.from('user_roles').delete().eq('user_id', targetId),
+        () => admin.from('user_department_access').delete().eq('user_id', targetId),
+        () => admin.from('notifications').delete().eq('user_id', targetId),
+        () => admin.from('profiles').delete().eq('user_id', targetId),
+      ]) {
+        const { error } = await step();
+        if (error) cleanupErrors.push(error.message);
+      }
+
+      // Hard-delete the auth user. Second arg `shouldSoftDelete` defaults to
+      // false → real deletion from auth.users.
+      const { error: delErr } = await admin.auth.admin.deleteUser(targetId, false);
+      if (delErr) {
+        return json({
+          error: `Не удалось удалить из auth: ${delErr.message}`,
+          cleanup_errors: cleanupErrors,
+        }, 500);
+      }
+
+      // Verify: list users (filter is not supported, so we just probe by id).
+      const { data: stillThere } = await admin.auth.admin.getUserById(targetId);
+      if (stillThere?.user) {
+        return json({
+          error: 'Auth API сообщил об успехе, но пользователь всё ещё существует. Проверьте права service_role и настройки проекта.',
+          cleanup_errors: cleanupErrors,
+        }, 500);
+      }
+      // Verify profile row is gone too.
+      const { data: profileLeft } = await admin
+        .from('profiles')
+        .select('user_id')
+        .eq('user_id', targetId)
+        .maybeSingle();
+      if (profileLeft) {
+        return json({
+          error: 'auth.users удалён, но строка profiles осталась. Возможно, триггер пересоздаёт профиль.',
+          cleanup_errors: cleanupErrors,
+        }, 500);
+      }
+
+      return json({ ok: true, cleanup_errors: cleanupErrors });
     }
 
     return json({ error: 'Unknown action' }, 400);
