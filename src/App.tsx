@@ -73,6 +73,11 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/invite" element={<AuthInvite />} />
+              {/* На случай если ссылку мангнули в /auth/invite/<token> или
+                  в /invite?invite=<token> — всё равно сводим к AuthInvite. */}
+              <Route path="/auth/invite/:fallback" element={<AuthInvite />} />
+              <Route path="/invite" element={<AuthInvite />} />
+              <Route path="/invite/:fallback" element={<AuthInvite />} />
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/tasks" element={<Tasks />} />

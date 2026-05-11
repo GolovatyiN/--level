@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,9 +25,13 @@ import { ThemeToggle } from "@/components/ThemeToggle";
  */
 export default function AuthInvite() {
   const [params] = useSearchParams();
+  const routeParams = useParams();
   const navigate = useNavigate();
 
-  const inviteToken = params.get("invite");
+  // Принимаем токен и из query (?invite=...), и из path-сегмента
+  // (/auth/invite/<token>) — чтобы переживать случаи когда ссылку
+  // мангнули в мессенджере или в почтовом клиенте.
+  const inviteToken = params.get("invite") ?? routeParams.fallback ?? null;
 
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
