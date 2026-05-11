@@ -185,11 +185,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 8. Build the action link. app_url defaults to caller's Origin if not
-    // explicitly provided.
-    const origin = app_url?.replace(/\/+$/, "") ??
-      req.headers.get("origin")?.replace(/\/+$/, "") ??
-      "";
+    // 8. Build the action link. Normalize app_url to just scheme+host+port —
+    // strip any path/query/hash. Older clients passed `redirect_to` already
+    // containing "/auth/invite", which would otherwise double up to
+    // "/auth/invite/auth/invite".
+    const rawOrigin = app_url ?? req.headers.get("origin") ?? "";
+    let origin = "";
+    try {
+      const u = new URL(rawOrigin);
+      origin = `${u.protocol}//${u.host}`;
+    } catch {
+      // If app_url isn't a valid URL (e.g. just a host:port), use it as-is
+      // after trimming trailing slashes.
+      origin = rawOrigin.replace(/\/+$/, "");
+    }
     if (!origin) {
       return json({ error: "Не указан app_url и не удалось определить Origin запроса" }, 400);
     }
