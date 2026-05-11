@@ -66,14 +66,30 @@ export function useDeleteAdminUser() {
       }
       if ((data as any)?.error) throw new Error((data as any).error);
     },
-    onSuccess: () => {
-      // Список пользователей читается из management_users (см. useManagement),
-      // а admin_users — отдельный query из edge-функции. Инвалидируем оба,
-      // плюс сопутствующие — иначе удалённый юзер ещё долго маячит в таблице.
-      qc.invalidateQueries({ queryKey: ["admin_users"] });
-      qc.invalidateQueries({ queryKey: ["management_users"] });
-      qc.invalidateQueries({ queryKey: ["app_users"] });
-      qc.invalidateQueries({ queryKey: ["user_department_access"] });
+    onSuccess: async (_data, user_id) => {
+      // Optimistic update — выкидываем юзера из кэшей сразу, чтобы UX
+      // не зависел от того, как быстро прилетит refetch. Если по какой-то
+      // причине юзер вернётся из refetch (т.е. в DB он остался) — он
+      // моментально появится снова, и это будет явный сигнал, что что-то
+      // не так на стороне сервера.
+      qc.setQueryData(["management_users"], (old: any[] | undefined) =>
+        (old ?? []).filter((u) => u.user_id !== user_id),
+      );
+      qc.setQueryData(["admin_users"], (old: any[] | undefined) =>
+        (old ?? []).filter((u) => u.id !== user_id),
+      );
+      qc.setQueryData(["app_users"], (old: any[] | undefined) =>
+        (old ?? []).filter((u) => u.user_id !== user_id && u.id !== user_id),
+      );
+      // refetchQueries (а не просто invalidate) гарантирует что мы
+      // сразу подтянем актуальное состояние с сервера. Если юзер в DB
+      // остался — он вернётся в таблицу, и это будет видно.
+      await Promise.all([
+        qc.refetchQueries({ queryKey: ["management_users"] }),
+        qc.refetchQueries({ queryKey: ["admin_users"] }),
+        qc.refetchQueries({ queryKey: ["app_users"] }),
+        qc.refetchQueries({ queryKey: ["user_department_access"] }),
+      ]);
       toast.success("Пользователь удалён");
     },
     onError: (e: any) => toast.error(e.message ?? "Ошибка удаления"),

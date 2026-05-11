@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
 
       // Hard-delete the auth user. Second arg `shouldSoftDelete` defaults to
       // false → real deletion from auth.users.
-      const { error: delErr } = await admin.auth.admin.deleteUser(targetId, false);
+      const { data: deletedData, error: delErr } = await admin.auth.admin.deleteUser(targetId, false);
       if (delErr) {
         return json({
           error: `Не удалось удалить из auth: ${delErr.message}`,
@@ -106,24 +106,32 @@ Deno.serve(async (req) => {
         }, 500);
       }
 
-      // Verify: list users (filter is not supported, so we just probe by id).
-      const { data: stillThere } = await admin.auth.admin.getUserById(targetId);
-      if (stillThere?.user) {
+      // Defense-in-depth round 2: cascade should have cleared profiles when
+      // auth.users row went away, but we have observed cases where the row
+      // survives. Issue an explicit delete after the auth delete, too.
+      await admin.from('profiles').delete().eq('user_id', targetId);
+
+      // Verify via listUsers (more reliable than getUserById for "not found"
+      // detection — getUserById's 404 handling varies).
+      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const authStillThere = (list?.users ?? []).some((u: any) => u.id === targetId);
+      if (authStillThere) {
         return json({
-          error: 'Auth API сообщил об успехе, но пользователь всё ещё существует. Проверьте права service_role и настройки проекта.',
+          error: 'Auth API сообщил об успехе, но пользователь всё ещё в auth.users. Проверьте SUPABASE_SERVICE_ROLE_KEY функции.',
           cleanup_errors: cleanupErrors,
+          deleted_data: deletedData,
         }, 500);
       }
-      // Verify profile row is gone too.
-      const { data: profileLeft } = await admin
+      // Verify profile row is gone.
+      const { count: profilesLeft } = await admin
         .from('profiles')
-        .select('user_id')
-        .eq('user_id', targetId)
-        .maybeSingle();
-      if (profileLeft) {
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', targetId);
+      if ((profilesLeft ?? 0) > 0) {
         return json({
           error: 'auth.users удалён, но строка profiles осталась. Возможно, триггер пересоздаёт профиль.',
           cleanup_errors: cleanupErrors,
+          profiles_left: profilesLeft,
         }, 500);
       }
 
