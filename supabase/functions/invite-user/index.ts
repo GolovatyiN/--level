@@ -128,10 +128,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Generate a one-time magic link. generateLink does not send email —
-    // it only returns the action_link. The admin shares it manually.
+    // 4. Generate a one-time recovery link. We use `recovery` (not `magiclink`)
+    // because:
+    //   * recovery type is specifically for the "set/reset password" flow,
+    //     which matches what /auth/invite does;
+    //   * recovery tokens get the standard 1h TTL, while magiclink tokens are
+    //     sometimes treated as already-consumed for newly-created users;
+    //   * generateLink doesn't send email — we just return the link.
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-      type: "magiclink",
+      type: "recovery",
       email,
       options: { redirectTo: redirect_to },
     });

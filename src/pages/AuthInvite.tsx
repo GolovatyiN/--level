@@ -22,6 +22,21 @@ import { ThemeToggle } from "@/components/ThemeToggle";
  * Если ссылка уже использована или просрочена — у нас нет user, показываем
  * понятное сообщение и кнопку «Перейти на страницу входа».
  */
+// Supabase кладёт ошибки auth в URL hash (#error=...&error_code=...).
+// Парсим их, чтобы показать пользователю человеческое сообщение.
+function parseHashError(): { code: string; description: string } | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.location.hash.replace(/^#/, "");
+  if (!raw || !raw.includes("error")) return null;
+  const params = new URLSearchParams(raw);
+  const err = params.get("error");
+  if (!err) return null;
+  return {
+    code: params.get("error_code") ?? err,
+    description: (params.get("error_description") ?? "").replace(/\+/g, " "),
+  };
+}
+
 export default function AuthInvite() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -31,6 +46,7 @@ export default function AuthInvite() {
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hashError = parseHashError();
 
   // Если ссылка истекла или невалидна — у нас не будет user.
   // Покажем пользователю понятное сообщение.
@@ -124,7 +140,11 @@ export default function AuthInvite() {
         {expired ? (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Ссылка-приглашение недействительна или уже использована.
+              {hashError?.code === "otp_expired"
+                ? "Ссылка устарела или уже была использована. Magic-ссылки одноразовые — попросите администратора создать новую."
+                : hashError?.description
+                  ? `Ссылка недействительна: ${hashError.description}`
+                  : "Ссылка-приглашение недействительна или уже использована."}
             </p>
             <Button variant="outline" className="w-full" onClick={() => navigate("/auth")}>
               Перейти на страницу входа
