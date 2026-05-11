@@ -102,7 +102,6 @@ export function InviteUserDialog({ open, onOpenChange }: Props) {
     }
     setSubmitting(true);
     try {
-      const redirectTo = `${window.location.origin}/auth/invite`;
       const { data, error } = await supabase.functions.invoke("invite-user", {
         body: {
           email: trimmedEmail,
@@ -110,7 +109,10 @@ export function InviteUserDialog({ open, onOpenChange }: Props) {
           role,
           direction_ids: Array.from(selectedDirs),
           access_level: accessLevel,
-          redirect_to: redirectTo,
+          // app_url подскажет edge-функции, какой origin использовать в
+          // ссылке. По умолчанию она берёт Origin из заголовка запроса,
+          // но передаём явно — так предсказуемее.
+          app_url: window.location.origin,
         },
       });
       // FunctionsHttpError часто прячет тело ответа в error.context. Достаём

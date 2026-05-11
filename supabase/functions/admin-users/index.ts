@@ -26,8 +26,13 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     const { data: roles } = await admin.from('user_roles').select('role').eq('user_id', user.id);
-    const isSuper = (roles ?? []).some((r: any) => r.role === 'superadmin');
-    if (!isSuper) return json({ error: 'Forbidden' }, 403);
+    const callerRoles = (roles ?? []).map((r: any) => r.role as string);
+    const isSuper = callerRoles.includes('superadmin');
+    const isAdmin = callerRoles.includes('admin') || isSuper;
+    // Both admin and superadmin manage users — matches the visibility rules
+    // for /management (see useCanManage). Per-action checks below restrict
+    // privileged operations (e.g. only superadmin may delete a superadmin).
+    if (!isAdmin) return json({ error: 'Forbidden' }, 403);
 
     const body = await req.json().catch(() => ({}));
     const action = body.action as string;
@@ -64,13 +69,78 @@ Deno.serve(async (req) => {
       const targetId = body.user_id as string;
       if (!targetId) return json({ error: 'user_id required' }, 400);
       if (targetId === user.id) return json({ error: 'Нельзя удалить самого себя' }, 400);
-      const { error } = await admin.auth.admin.deleteUser(targetId);
-      if (error) throw error;
-      return json({ ok: true });
+
+      // Only a superadmin may delete another superadmin.
+      const { data: targetRoles } = await admin
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', targetId);
+      const targetIsSuper = (targetRoles ?? []).some((r: any) => r.role === 'superadmin');
+      if (targetIsSuper && !isSuper) {
+        return json({ error: 'Удалить супер-админа может только супер-админ' }, 403);
+      }
+
+      // Defense-in-depth: even though FKs to auth.users are declared CASCADE,
+      // we have seen cases where the row in `profiles` survives the auth
+      // delete (some triggers / replicas). So we explicitly clear our app
+      // tables first. The deletes are idempotent — if cascade already fired,
+      // these are no-ops.
+      const cleanupErrors: string[] = [];
+      for (const step of [
+        () => admin.from('user_roles').delete().eq('user_id', targetId),
+        () => admin.from('user_department_access').delete().eq('user_id', targetId),
+        () => admin.from('notifications').delete().eq('user_id', targetId),
+        () => admin.from('profiles').delete().eq('user_id', targetId),
+      ]) {
+        const { error } = await step();
+        if (error) cleanupErrors.push(error.message);
+      }
+
+      // Hard-delete the auth user. Second arg `shouldSoftDelete` defaults to
+      // false → real deletion from auth.users.
+      const { data: deletedData, error: delErr } = await admin.auth.admin.deleteUser(targetId, false);
+      if (delErr) {
+        return json({
+          error: `Не удалось удалить из auth: ${delErr.message}`,
+          cleanup_errors: cleanupErrors,
+        }, 500);
+      }
+
+      // Defense-in-depth round 2: cascade should have cleared profiles when
+      // auth.users row went away, but we have observed cases where the row
+      // survives. Issue an explicit delete after the auth delete, too.
+      await admin.from('profiles').delete().eq('user_id', targetId);
+
+      // Verify via listUsers (more reliable than getUserById for "not found"
+      // detection — getUserById's 404 handling varies).
+      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const authStillThere = (list?.users ?? []).some((u: any) => u.id === targetId);
+      if (authStillThere) {
+        return json({
+          error: 'Auth API сообщил об успехе, но пользователь всё ещё в auth.users. Проверьте SUPABASE_SERVICE_ROLE_KEY функции.',
+          cleanup_errors: cleanupErrors,
+          deleted_data: deletedData,
+        }, 500);
+      }
+      // Verify profile row is gone.
+      const { count: profilesLeft } = await admin
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', targetId);
+      if ((profilesLeft ?? 0) > 0) {
+        return json({
+          error: 'auth.users удалён, но строка profiles осталась. Возможно, триггер пересоздаёт профиль.',
+          cleanup_errors: cleanupErrors,
+          profiles_left: profilesLeft,
+        }, 500);
+      }
+
+      return json({ ok: true, cleanup_errors: cleanupErrors });
     }
 
     return json({ error: 'Unknown action' }, 400);
   } catch (e) {
+    console.error('admin-users fatal', e);
     return json({ error: (e as Error).message }, 500);
   }
 });
