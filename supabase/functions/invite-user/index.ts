@@ -1,4 +1,4 @@
-// Edge function: create a new user and return a one-time login link.
+// Edge function: create a new user and return a custom invite link.
 //
 // Caller must be authenticated and have role 'admin' or 'superadmin'.
 // Body:
@@ -8,22 +8,22 @@
 //     role?: 'superadmin'|'admin'|'department_head'|'manager'|'viewer'|'user',
 //     direction_ids?: string[],            // grant access (default 'view')
 //     access_level?: 'view'|'edit'|'full', // for the listed directions
-//     redirect_to?: string                 // override redirect URL
+//     app_url?: string                     // override (defaults to caller's origin)
 //   }
 //
 // Response:
-//   { user_id, email, action_link, created: true }
-//   action_link is the one-shot magic link the admin shares with the user.
+//   { user_id, email, action_link, created: true, invite_id }
+//   action_link = `${app_url}/auth/invite?invite=<UUID>` — opens our own page
+//   that consumes the token via accept-invite.
 //
 // Implementation notes:
-//   * No email is sent. We use admin.createUser({ email_confirm: true }) which
-//     suppresses any signup email, then admin.generateLink({ type: 'magiclink' })
-//     which only returns the link (it does NOT trigger SMTP). The admin copies
-//     the link out of the UI and delivers it to the user any way they like.
-//   * The link lands on /auth/invite, where the user picks a password and
-//     finalises display_name.
-//   * Roles and department access are inserted via service_role so they
-//     bypass RLS — the admin's own role is verified at the top.
+//   * No email is sent.
+//   * We bypass Supabase's magic-link / recovery flow entirely (their tokens
+//     hit auth.v1.verify which requires the redirect URL to be on the project
+//     allowlist and have a short TTL). Instead we generate our own one-time
+//     token in `public.invites` with a 7-day TTL.
+//   * If the email already exists we reuse the existing user and just create
+//     a new invite row for them.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -38,6 +38,8 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+const INVITE_TTL_DAYS = 7;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -80,7 +82,7 @@ Deno.serve(async (req) => {
     const role = body.role as string | undefined;
     const direction_ids: string[] = Array.isArray(body.direction_ids) ? body.direction_ids : [];
     const access_level = (body.access_level as string) ?? "view";
-    const redirect_to: string | undefined = body.redirect_to?.toString();
+    const app_url: string | undefined = (body.app_url ?? body.redirect_to)?.toString();
 
     // Admins cannot create superadmins — only an existing superadmin can.
     if (role === "superadmin") {
@@ -88,9 +90,7 @@ Deno.serve(async (req) => {
       if (!isSuper) return json({ error: "Только супер-админ может создавать супер-админов" }, 403);
     }
 
-    // 3. Create the user (email_confirm=true means no signup email is sent).
-    // If the user already exists (from a previous invite/signup), reuse them
-    // and just issue a fresh magic link — no need to fail.
+    // 3. Create or reuse the user.
     let newUser: any = null;
     {
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
@@ -110,7 +110,6 @@ Deno.serve(async (req) => {
         if (!alreadyExists) {
           return json({ error: createErr?.message ?? "Не удалось создать пользователя" }, 400);
         }
-        // Find the existing user by email — listUsers paginates, so we filter.
         const { data: list, error: listErr } = await admin.auth.admin.listUsers({
           page: 1,
           perPage: 200,
@@ -128,25 +127,29 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Generate a one-time recovery link. We use `recovery` (not `magiclink`)
-    // because:
-    //   * recovery type is specifically for the "set/reset password" flow,
-    //     which matches what /auth/invite does;
-    //   * recovery tokens get the standard 1h TTL, while magiclink tokens are
-    //     sometimes treated as already-consumed for newly-created users;
-    //   * generateLink doesn't send email — we just return the link.
-    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: { redirectTo: redirect_to },
-    });
-    if (linkErr) {
-      return json(
-        { error: `Пользователь создан, но ссылку выдать не удалось: ${linkErr.message}`, user_id: newUser.id },
-        500,
-      );
+    // 4. Invalidate previous unused invites for this user, then create a fresh
+    // one. Keeping a single live invite per user means clicking "create link"
+    // again rotates the token (older copies of the URL stop working).
+    await admin
+      .from("invites")
+      .update({ used_at: new Date().toISOString() })
+      .eq("user_id", newUser.id)
+      .is("used_at", null);
+
+    const expires_at = new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const { data: invite, error: inviteErr } = await admin
+      .from("invites")
+      .insert({
+        user_id: newUser.id,
+        email,
+        expires_at,
+        created_by: caller.id,
+      })
+      .select("id")
+      .single();
+    if (inviteErr || !invite) {
+      return json({ error: `Не удалось создать invite-токен: ${inviteErr?.message ?? ""}` }, 500);
     }
-    const action_link = (linkData?.properties as any)?.action_link as string | undefined;
 
     // 5. Persist created_by_user_id on the profile so we know who invited them.
     await admin
@@ -161,7 +164,7 @@ Deno.serve(async (req) => {
         .from("user_roles")
         .insert({ user_id: newUser.id, role });
       if (roleErr) {
-        return json({ error: `Роль не назначена: ${roleErr.message}`, user_id: newUser.id, action_link }, 500);
+        return json({ error: `Роль не назначена: ${roleErr.message}`, user_id: newUser.id }, 500);
       }
     }
 
@@ -178,15 +181,25 @@ Deno.serve(async (req) => {
         return json({
           error: `Доступы не выданы: ${accessErr.message}`,
           user_id: newUser.id,
-          action_link,
         }, 500);
       }
     }
+
+    // 8. Build the action link. app_url defaults to caller's Origin if not
+    // explicitly provided.
+    const origin = app_url?.replace(/\/+$/, "") ??
+      req.headers.get("origin")?.replace(/\/+$/, "") ??
+      "";
+    if (!origin) {
+      return json({ error: "Не указан app_url и не удалось определить Origin запроса" }, 400);
+    }
+    const action_link = `${origin}/auth/invite?invite=${invite.id}`;
 
     return json({
       created: true,
       user_id: newUser.id,
       email: newUser.email,
+      invite_id: invite.id,
       action_link,
     });
   } catch (err: any) {

@@ -1,73 +1,46 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 /**
- * /auth/invite — лендинг для одноразовой magic-ссылки, которую генерирует
- * админ через `/management → Добавить пользователя`. К моменту попадания
- * сюда Supabase уже создал сессию по токенам из URL, нам остаётся:
- *   1. Спросить имя (если не задано) и пароль.
- *   2. Через `auth.updateUser` сохранить пароль и обновить display_name.
- *   3. Положить display_name в profiles.
- *   4. Отправить юзера в приложение.
+ * /auth/invite?invite=<uuid> — лендинг для собственной системы инвайтов.
  *
- * Если ссылка уже использована или просрочена — у нас нет user, показываем
- * понятное сообщение и кнопку «Перейти на страницу входа».
+ * Поток:
+ *   1. URL содержит invite-токен (?invite=...). Запоминаем его.
+ *   2. Пользователь вводит имя + пароль.
+ *   3. Отправляем {invite, password, display_name} в edge accept-invite.
+ *      Edge через service_role ставит пароль и помечает токен использованным.
+ *   4. На клиенте делаем signInWithPassword({email, password}) — теперь
+ *      пользователь залогинен обычной парой email/пароль.
+ *   5. Редиректим в корень приложения.
+ *
+ * Если в URL нет токена — показываем сообщение и кнопку перейти на /auth.
  */
-// Supabase кладёт ошибки auth в URL hash (#error=...&error_code=...).
-// Парсим их, чтобы показать пользователю человеческое сообщение.
-function parseHashError(): { code: string; description: string } | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.location.hash.replace(/^#/, "");
-  if (!raw || !raw.includes("error")) return null;
-  const params = new URLSearchParams(raw);
-  const err = params.get("error");
-  if (!err) return null;
-  return {
-    code: params.get("error_code") ?? err,
-    description: (params.get("error_description") ?? "").replace(/\+/g, " "),
-  };
-}
-
 export default function AuthInvite() {
-  const { user, loading } = useAuth();
+  const [params] = useSearchParams();
   const navigate = useNavigate();
+
+  const inviteToken = params.get("invite");
 
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hashError = parseHashError();
-
-  // Если ссылка истекла или невалидна — у нас не будет user.
-  // Покажем пользователю понятное сообщение.
-  const expired = !loading && !user;
-
-  // Pre-fill name from user metadata.
-  useEffect(() => {
-    if (!user) return;
-    const meta = (user.user_metadata ?? {}) as any;
-    if (meta.display_name && !name) setName(meta.display_name);
-  }, [user, name]);
+  const [done, setDone] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || submitting) return;
+    if (!inviteToken || submitting) return;
     setError(null);
 
-    if (!name.trim()) {
-      setError("Введите имя");
-      return;
-    }
     if (password.length < 6) {
       setError("Пароль должен быть не короче 6 символов");
       return;
@@ -79,21 +52,45 @@ export default function AuthInvite() {
 
     setSubmitting(true);
     try {
-      // Ставим пароль и обновляем metadata.display_name.
-      const { error: updErr } = await supabase.auth.updateUser({
-        password,
-        data: { display_name: name.trim() },
+      const { data, error: fnErr } = await supabase.functions.invoke("accept-invite", {
+        body: {
+          invite: inviteToken,
+          password,
+          display_name: name.trim() || undefined,
+        },
       });
-      if (updErr) throw updErr;
 
-      // Profiles.display_name тоже синхронизируем — handle_new_user trigger
-      // его уже создал при invite, обновим на финальное значение.
-      await supabase
-        .from("profiles" as any)
-        .update({ display_name: name.trim() } as any)
-        .eq("user_id", user.id);
+      // FunctionsHttpError прячет тело non-2xx в context — достанем
+      // реальное сообщение.
+      if (fnErr) {
+        let detail: string | null = null;
+        const ctx = (fnErr as any)?.context;
+        if (ctx?.json) {
+          try {
+            const j = await ctx.json();
+            detail = j?.error ?? null;
+          } catch {/* ignore */}
+        }
+        throw new Error(detail ?? fnErr.message ?? "Не удалось активировать ссылку");
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
 
-      toast.success("Аккаунт настроен. Добро пожаловать!");
+      const email = (data as any)?.email as string;
+      if (!email) throw new Error("Сервер не вернул email пользователя");
+
+      // Логинимся обычным email/паролем — это самый надёжный способ.
+      const { error: signErr } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signErr) {
+        throw new Error(
+          `Пароль установлен, но автоматический вход не сработал: ${signErr.message}. Попробуйте войти через /auth.`,
+        );
+      }
+
+      setDone(true);
+      toast.success("Аккаунт активирован. Добро пожаловать!");
       navigate("/", { replace: true });
     } catch (err: any) {
       const msg = err?.message ?? "Не удалось завершить регистрацию";
@@ -103,14 +100,6 @@ export default function AuthInvite() {
       setSubmitting(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-background p-6">
@@ -137,14 +126,11 @@ export default function AuthInvite() {
           </div>
         </div>
 
-        {expired ? (
+        {!inviteToken ? (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              {hashError?.code === "otp_expired"
-                ? "Ссылка устарела или уже была использована. Magic-ссылки одноразовые — попросите администратора создать новую."
-                : hashError?.description
-                  ? `Ссылка недействительна: ${hashError.description}`
-                  : "Ссылка-приглашение недействительна или уже использована."}
+              В ссылке нет invite-токена. Возможно, она устарела или была
+              скопирована неполностью. Попросите администратора создать новую.
             </p>
             <Button variant="outline" className="w-full" onClick={() => navigate("/auth")}>
               Перейти на страницу входа
@@ -153,10 +139,6 @@ export default function AuthInvite() {
         ) : (
           <form onSubmit={submit} className="grid gap-4" noValidate>
             <div className="grid gap-1.5">
-              <Label>Email</Label>
-              <Input value={user?.email ?? ""} disabled readOnly />
-            </div>
-            <div className="grid gap-1.5">
               <Label htmlFor="invite_name">Имя</Label>
               <Input
                 id="invite_name"
@@ -164,7 +146,7 @@ export default function AuthInvite() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Иван Петров"
                 autoComplete="name"
-                disabled={submitting}
+                disabled={submitting || done}
               />
             </div>
             <div className="grid gap-1.5">
@@ -177,7 +159,7 @@ export default function AuthInvite() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
-                disabled={submitting}
+                disabled={submitting || done}
               />
             </div>
             <div className="grid gap-1.5">
@@ -190,7 +172,7 @@ export default function AuthInvite() {
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 autoComplete="new-password"
-                disabled={submitting}
+                disabled={submitting || done}
               />
             </div>
 
@@ -203,9 +185,9 @@ export default function AuthInvite() {
               </div>
             )}
 
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting || done}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {submitting ? "Подождите..." : "Завершить регистрацию"}
+              {done ? "Готово" : submitting ? "Подождите..." : "Завершить регистрацию"}
             </Button>
           </form>
         )}
