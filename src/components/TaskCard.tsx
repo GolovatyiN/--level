@@ -1,10 +1,10 @@
 import { Calendar, ExternalLink } from "lucide-react";
-import { format, isPast, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Task } from "@/hooks/useTasks";
 import { Direction } from "@/hooks/useDirections";
 import { useUserMap } from "@/hooks/useUsers";
 import { PriorityBadge } from "./StatusBadge";
-import { cn } from "@/lib/utils";
+import { cn, isOverdue } from "@/lib/utils";
 
 interface Props {
   task: Task;
@@ -14,7 +14,7 @@ interface Props {
 }
 
 export function TaskCard({ task, direction, onClick, isDragging }: Props) {
-  const overdue = task.deadline && isPast(parseISO(task.deadline)) && task.status !== "completed";
+  const overdue = isOverdue(task);
   const { map: userMap } = useUserMap();
   const assigneeName = task.assignee_id ? userMap.get(task.assignee_id) ?? null : task.assignee;
   return (

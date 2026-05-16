@@ -1,11 +1,10 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { isPast, parseISO } from "date-fns";
 import { useTasks } from "@/hooks/useTasks";
 import { useDirections } from "@/hooks/useDirections";
 import { usePlans, PLAN_STATUS_LABELS, type PlanStatus } from "@/hooks/usePlans";
-import { cn } from "@/lib/utils";
+import { cn, isOverdue } from "@/lib/utils";
 
 /** Static palette so chart colours stay stable across themes. */
 const COLOURS = {
@@ -71,9 +70,7 @@ export function DashboardCharts({ quarter, direction }: Props = {}) {
     const atRisk     = active.filter((t) => t.status === "at_risk").length;
     const blocked    = active.filter((t) => t.status === "blocked").length;
     const completed  = active.filter((t) => t.status === "completed").length;
-    const overdue    = active.filter(
-      (t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed",
-    ).length;
+    const overdue    = active.filter(isOverdue).length;
     return [
       { name: "В работе",   value: inProgress, fill: COLOURS.status_in_progress },
       { name: "Под риском", value: atRisk,     fill: COLOURS.status_at_risk },

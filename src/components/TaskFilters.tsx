@@ -7,7 +7,7 @@ import { useTasks } from "@/hooks/useTasks";
 import { PRIORITIES, QUARTERS, STATUSES, quarterLabelRu } from "@/lib/constants";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { useMemo } from "react";
-import { isPast, parseISO } from "date-fns";
+import { isOverdue } from "@/lib/utils";
 
 export type SortKey = "created_desc" | "created_asc" | "deadline_asc" | "deadline_desc" | "priority_desc" | "title_asc";
 
@@ -181,7 +181,7 @@ export function applyFilters<
       if (f.status === "active") {
         if (t.status === "completed") return false;
       } else if (f.status === "overdue") {
-        if (!t.deadline || !isPast(parseISO(t.deadline)) || t.status === "completed") return false;
+        if (!isOverdue(t)) return false;
       } else if (t.status !== f.status) return false;
     }
     return true;

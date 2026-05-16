@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { format, isPast, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Calendar, ExternalLink, Search } from "lucide-react";
 import {
   Dialog,
@@ -16,7 +16,7 @@ import type { Direction } from "@/hooks/useDirections";
 import { useTasks, type Task } from "@/hooks/useTasks";
 import { useUserMap } from "@/hooks/useUsers";
 import { quarterLabelRu } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, isOverdue } from "@/lib/utils";
 
 type Filter =
   | "all"
@@ -70,7 +70,7 @@ export function DepartmentTasksDialog({ open, onOpenChange, direction }: Props) 
     tasks.forEach((t) => {
       if (t.status === "completed") s.completed++;
       if (t.status === "in_progress") s.in_progress++;
-      if (t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed") s.overdue++;
+      if (isOverdue(t)) s.overdue++;
       if (t.priority === "critical") s.critical++;
       else if (t.priority === "high") s.high++;
       else if (t.priority === "medium") s.medium++;
@@ -96,7 +96,7 @@ export function DepartmentTasksDialog({ open, onOpenChange, direction }: Props) 
     else if (filter === "high") r = r.filter((t) => t.priority === "high");
     else if (filter === "medium") r = r.filter((t) => t.priority === "medium");
     else if (filter === "overdue")
-      r = r.filter((t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed");
+      r = r.filter(isOverdue);
     else if (filter === "in_progress") r = r.filter((t) => t.status === "in_progress");
     else if (filter === "completed") r = r.filter((t) => t.status === "completed");
     else if (filter.startsWith("dir:")) {
@@ -201,7 +201,7 @@ export function DepartmentTasksDialog({ open, onOpenChange, direction }: Props) 
             ) : (
               <ul className="space-y-1.5">
                 {filtered.map((t) => {
-                  const overdue = t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed";
+                  const overdue = isOverdue(t);
                   const assignee =
                     (t.assignee_id ? userMap.get(t.assignee_id) : null) ?? t.assignee ?? null;
                   return (

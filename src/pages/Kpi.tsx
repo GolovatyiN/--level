@@ -9,7 +9,8 @@ import { KpiDialog } from "@/components/KpiDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { QUARTERS, currentQuarter, quarterLabelRu } from "@/lib/constants";
 import { useQuarters } from "@/hooks/useTaxonomies";
-import { isPast, parseISO, eachDayOfInterval, startOfQuarter, endOfQuarter, format } from "date-fns";
+import { parseISO, eachDayOfInterval, startOfQuarter, endOfQuarter, format } from "date-fns";
+import { isOverdue } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Confetti } from "@/components/Confetti";
 import { useUserMap } from "@/hooks/useUsers";
@@ -90,7 +91,7 @@ export default function KpiPage() {
       if (statusFilter === "completed") return t.status === "completed";
       if (statusFilter === "active") return t.status !== "completed";
       if (statusFilter === "overdue")
-        return !!t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed";
+        return isOverdue(t);
       return t.status === statusFilter;
     },
     [statusFilter],
@@ -136,7 +137,7 @@ export default function KpiPage() {
   const total = activeTasks.length;
   const completed = activeTasks.filter((t) => t.status === "completed").length;
   const overdue = activeTasks.filter(
-    (t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed"
+    isOverdue
   ).length;
   const completionPct = total ? Math.round((completed / total) * 100) : 0;
 
@@ -144,7 +145,7 @@ export default function KpiPage() {
     return directions.map((d) => {
       const items = activeTasks.filter((t) => t.direction_id === d.id);
       const done = items.filter((t) => t.status === "completed").length;
-      const overdueD = items.filter((t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed").length;
+      const overdueD = items.filter(isOverdue).length;
       return {
         id: d.id,
         name: d.name,
@@ -184,7 +185,7 @@ export default function KpiPage() {
       const e = m.get(key) ?? { total: 0, done: 0, overdue: 0 };
       e.total += 1;
       if (t.status === "completed") e.done += 1;
-      if (t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed") e.overdue += 1;
+      if (isOverdue(t)) e.overdue += 1;
       m.set(key, e);
     });
     return Array.from(m.entries())
