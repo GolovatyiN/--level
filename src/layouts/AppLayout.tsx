@@ -13,7 +13,6 @@ import {
   AlertTriangle,
   Settings2,
 } from "lucide-react";
-import { isPast, parseISO } from "date-fns";
 import { useCanManage } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useState } from "react";
@@ -25,7 +24,7 @@ import { UserMenu } from "@/components/UserMenu";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 import { useNotificationsRealtime } from "@/hooks/useNotifications";
 import { useTasks } from "@/hooks/useTasks";
-import { cn } from "@/lib/utils";
+import { cn, isOverdue } from "@/lib/utils";
 
 const NAV = [
   { to: "/", label: "Панель управления", icon: LayoutDashboard, end: true },
@@ -54,12 +53,7 @@ export function AppLayout() {
   // ситуацию когда «1 просрочено» висит, хотя задачу уже удалили.
   const { data: tasks = [], isFetched } = useTasks();
   const overdueCount = useMemo(
-    () =>
-      isFetched
-        ? tasks.filter(
-            (t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed",
-          ).length
-        : 0,
+    () => (isFetched ? tasks.filter(isOverdue).length : 0),
     [tasks, isFetched],
   );
 

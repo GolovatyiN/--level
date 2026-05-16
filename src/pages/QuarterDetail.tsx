@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { format, isPast, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -28,7 +28,7 @@ import {
   usePlanStats,
 } from "@/hooks/usePlans";
 import { quarterLabelRu } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, isOverdue } from "@/lib/utils";
 
 /**
  * "Рабочий" экран одного квартала. Показывает все отделы и их планы +
@@ -75,7 +75,7 @@ export default function QuarterDetail() {
     const total = quarterTasks.length;
     const done = quarterTasks.filter((t) => t.status === "completed").length;
     const overdue = quarterTasks.filter(
-      (t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed",
+      isOverdue,
     ).length;
     const critical = quarterTasks.filter(
       (t) => t.priority === "critical" && t.status !== "completed",
@@ -146,7 +146,7 @@ export default function QuarterDetail() {
             const dirTasks = quarterTasks.filter((t) => t.direction_id === d.id);
             const completed = dirTasks.filter((t) => t.status === "completed").length;
             const overdue = dirTasks.filter(
-              (t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed",
+              isOverdue,
             ).length;
             const critical = dirTasks.filter(
               (t) => t.priority === "critical" && t.status !== "completed",

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { isPast, parseISO } from "date-fns";
+import { isOverdue } from "@/lib/utils";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -85,7 +85,7 @@ export default function Dashboard() {
   const blocked = baseFiltered.filter((t) => t.status === "blocked").length;
   const completed = baseFiltered.filter((t) => t.status === "completed").length;
   const overdue = baseFiltered.filter(
-    (t) => t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed",
+    isOverdue,
   ).length;
 
   const stats = [
@@ -172,7 +172,7 @@ export default function Dashboard() {
               const done = t.filter((x) => x.status === "completed").length;
               const pct = t.length ? Math.round((done / t.length) * 100) : 0;
               const dirOverdue = t.filter(
-                (x) => x.deadline && isPast(parseISO(x.deadline)) && x.status !== "completed",
+                isOverdue,
               ).length;
               const open = t.filter((x) => x.status !== "completed");
               const critical = open.filter((x) => x.priority === "critical").length;

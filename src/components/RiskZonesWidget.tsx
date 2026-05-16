@@ -1,13 +1,12 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { isPast, parseISO } from "date-fns";
 import { AlertCircle, AlertTriangle, FileWarning, Flame } from "lucide-react";
 import { useTasks } from "@/hooks/useTasks";
 import { useDirections } from "@/hooks/useDirections";
 import { usePlans } from "@/hooks/usePlans";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { quarterLabelRu } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, isOverdue } from "@/lib/utils";
 
 type ZoneItem = {
   key: string;
@@ -41,7 +40,7 @@ export function RiskZonesWidget() {
     tasks.forEach((t) => {
       if (t.archived) return;
       if (!t.direction_id) return;
-      if (t.deadline && isPast(parseISO(t.deadline)) && t.status !== "completed") {
+      if (isOverdue(t)) {
         overdueByDir.set(t.direction_id, (overdueByDir.get(t.direction_id) ?? 0) + 1);
       }
     });
