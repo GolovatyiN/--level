@@ -36,7 +36,16 @@ export function UserPicker({ value, onChange, placeholder = "Выберите п
           <span className="flex min-w-0 items-center gap-2 truncate">
             <UserIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             {selected ? (
-              <span className="truncate">{selected.display_name ?? "—"}</span>
+              <span className="flex min-w-0 flex-col text-left">
+                <span className="truncate leading-tight">
+                  {selected.display_name ?? selected.email ?? "—"}
+                </span>
+                {selected.display_name && selected.email && (
+                  <span className="truncate text-[10px] leading-tight text-muted-foreground">
+                    {selected.email}
+                  </span>
+                )}
+              </span>
             ) : (
               <span className="truncate text-muted-foreground">{placeholder}</span>
             )}
@@ -69,7 +78,7 @@ export function UserPicker({ value, onChange, placeholder = "Выберите п
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Поиск по имени..." />
+          <CommandInput placeholder="Поиск по имени или email..." />
           <CommandList>
             <CommandEmpty>{isLoading ? "Загрузка..." : "Никого не найдено."}</CommandEmpty>
             <CommandGroup>
@@ -78,15 +87,26 @@ export function UserPicker({ value, onChange, placeholder = "Выберите п
                 return (
                   <CommandItem
                     key={u.user_id}
-                    value={`${u.display_name ?? ""} ${u.user_id}`}
+                    // cmdk фильтрует по `value`. Конкатенируем display_name +
+                    // email + id, чтобы поиск работал по обоим полям.
+                    value={`${u.display_name ?? ""} ${u.email ?? ""} ${u.user_id}`}
                     onSelect={() => {
                       onChange(u.user_id);
                       setOpen(false);
                     }}
                   >
-                    <UserIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="flex-1 truncate">{u.display_name ?? "—"}</span>
-                    {active && <Check className="ml-auto h-4 w-4" />}
+                    <UserIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate leading-tight">
+                        {u.display_name ?? u.email ?? "—"}
+                      </span>
+                      {u.display_name && u.email && (
+                        <span className="truncate text-[10px] leading-tight text-muted-foreground">
+                          {u.email}
+                        </span>
+                      )}
+                    </div>
+                    {active && <Check className="ml-2 h-4 w-4 shrink-0" />}
                   </CommandItem>
                 );
               })}

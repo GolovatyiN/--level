@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Direction, useDeleteDirection, useUpsertDirection } from "@/hooks/useDirections";
+import { UserPicker } from "@/components/UserPicker";
 import { DIRECTION_COLORS } from "@/lib/constants";
 import { Trash2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -36,7 +37,14 @@ export function DirectionDialog({ open, onOpenChange, direction }: Props) {
   // the user's in-progress edits.
   useEffect(() => {
     if (open) {
-      setForm(direction ?? { name: "", description: "", color: DIRECTION_COLORS[0], owner: "" });
+      setForm(
+        direction ?? {
+          name: "",
+          description: "",
+          color: DIRECTION_COLORS[0],
+          head_user_id: null,
+        },
+      );
       setConfirmDelete(false);
     }
   }, [open, direction?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -79,8 +87,17 @@ export function DirectionDialog({ open, onOpenChange, direction }: Props) {
             <Textarea value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
           </div>
           <div className="grid gap-1.5">
-            <Label>Ответственный</Label>
-            <Input value={form.owner ?? ""} onChange={(e) => setForm({ ...form, owner: e.target.value })} placeholder="Head of SEO" />
+            <Label>Руководитель отдела</Label>
+            <UserPicker
+              value={form.head_user_id ?? null}
+              onChange={(id) => setForm({ ...form, head_user_id: id })}
+              placeholder="Не назначен"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Выбирается из списка зарегистрированных пользователей.
+              Если человека ещё нет в системе — пригласите его в разделе
+              «Управление → Пользователи».
+            </p>
           </div>
           <div className="grid gap-1.5">
             <Label>Цвет</Label>

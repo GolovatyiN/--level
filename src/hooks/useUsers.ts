@@ -4,6 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 export type AppUser = {
   user_id: string;
   display_name: string | null;
+  /** Mirrored from auth.users.email via trigger — см. миграцию
+   * profiles_email_and_admin_role_visibility. Используем в пикерах,
+   * чтобы пользователь видел не только имя, но и email. */
+  email: string | null;
 };
 
 /**
@@ -17,11 +21,11 @@ export function useUsers() {
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
+        .from("profiles" as any)
+        .select("user_id, display_name, email")
         .order("display_name", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as AppUser[];
+      return ((data as any[]) ?? []) as AppUser[];
     },
   });
 }
