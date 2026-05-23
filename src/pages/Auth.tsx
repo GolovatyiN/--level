@@ -9,15 +9,21 @@ import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
 
+/**
+ * /auth — единственный вход в систему.
+ *
+ * Самостоятельная регистрация отключена: новые пользователи попадают
+ * в систему только через invite-ссылки, которые создаёт admin/
+ * superadmin в `/management → Добавить пользователя`. Эта страница
+ * только логин по email + пароль.
+ */
 export default function Auth() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = (location.state as { from?: string } | null)?.from ?? "/";
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,34 +41,17 @@ export default function Auth() {
       setError("Введите email и пароль");
       return;
     }
-    if (password.length < 6) {
-      setError("Пароль должен быть не короче 6 символов");
-      return;
-    }
 
     setSubmitting(true);
     try {
-      if (mode === "signup") {
-        const { error: err } = await supabase.auth.signUp({
-          email: trimmedEmail,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: { display_name: name.trim() || trimmedEmail.split("@")[0] },
-          },
-        });
-        if (err) throw err;
-        toast.success("Аккаунт создан. Проверьте почту, если требуется подтверждение.");
-      } else {
-        const { error: err } = await supabase.auth.signInWithPassword({
-          email: trimmedEmail,
-          password,
-        });
-        if (err) throw err;
-      }
+      const { error: err } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
+      });
+      if (err) throw err;
       navigate(redirectTo, { replace: true });
     } catch (err: any) {
-      const msg = err?.message ?? "Не удалось выполнить операцию";
+      const msg = err?.message ?? "Не удалось войти";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -99,26 +88,11 @@ export default function Auth() {
           </div>
           <div>
             <h1 className="text-lg font-semibold">SEO Team Hub</h1>
-            <p className="text-xs text-muted-foreground">
-              {mode === "signin" ? "Вход в аккаунт" : "Создание аккаунта"}
-            </p>
+            <p className="text-xs text-muted-foreground">Вход в аккаунт</p>
           </div>
         </div>
 
         <form onSubmit={submit} className="grid gap-4" noValidate>
-          {mode === "signup" && (
-            <div className="grid gap-1.5">
-              <Label htmlFor="name">Имя</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Иван"
-                autoComplete="name"
-                disabled={submitting}
-              />
-            </div>
-          )}
           <div className="grid gap-1.5">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -140,7 +114,7 @@ export default function Auth() {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              autoComplete="current-password"
               disabled={submitting}
             />
           </div>
@@ -156,20 +130,14 @@ export default function Auth() {
 
           <Button type="submit" disabled={submitting}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {submitting ? "Подождите..." : mode === "signin" ? "Войти" : "Создать аккаунт"}
+            {submitting ? "Подождите..." : "Войти"}
           </Button>
         </form>
 
-        <button
-          type="button"
-          onClick={() => {
-            setMode(mode === "signin" ? "signup" : "signin");
-            setError(null);
-          }}
-          className="mt-4 w-full rounded text-center text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {mode === "signin" ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}
-        </button>
+        <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground">
+          Доступ к системе только по приглашению. Если у вас нет аккаунта —
+          попросите администратора создать ссылку-приглашение.
+        </p>
       </div>
     </div>
   );
