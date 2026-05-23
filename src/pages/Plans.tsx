@@ -33,6 +33,7 @@ import { PlanStatusBadge } from "@/components/PlanStatusBadge";
 import { DirectionDialog } from "@/components/DirectionDialog";
 import { MultiSelectPopover, type MultiSelectOption } from "@/components/MultiSelectPopover";
 import { useDirections, useReorderDirections, type Direction } from "@/hooks/useDirections";
+import { useCanManage } from "@/hooks/useUserRole";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import {
   BACKLOG_LABEL,
@@ -104,6 +105,10 @@ function quarterNumberPrefix(label: string): string | null {
  * сохраняется в БД (`directions.sort_order`).
  */
 export default function Plans() {
+  // Только админ может создавать/редактировать отделы и менять их
+  // порядок (RLS на бэке всё равно отрежет, но кнопки лучше скрывать,
+  // чтобы у обычных юзеров не было нерабочих affordance).
+  const canManage = useCanManage();
   const { data: directions = [] } = useDirections();
   const { data: quarters = [] } = useQuarters();
   const { data: plans = [], isLoading } = usePlans();
@@ -242,9 +247,11 @@ export default function Plans() {
         title="Квартальные планы"
         description="Планы отделов на каждый квартал — статус, прогресс, согласование"
         actions={
-          <Button onClick={() => setCreatingDir(true)} size="sm">
-            <Plus className="mr-1 h-4 w-4" /> Отдел
-          </Button>
+          canManage ? (
+            <Button onClick={() => setCreatingDir(true)} size="sm">
+              <Plus className="mr-1 h-4 w-4" /> Отдел
+            </Button>
+          ) : null
         }
       />
       <div className="p-4 sm:p-8">
@@ -356,6 +363,7 @@ export default function Plans() {
                           quarters={visibleQuarters}
                           planByCell={planByCell}
                           statsByPlan={statsByPlan}
+                          canManage={canManage}
                           onCreate={(quarter_id) =>
                             setCreatingFor({ direction_id: d.id, quarter_id })
                           }
@@ -405,6 +413,7 @@ function DirectionRow({
   quarters,
   planByCell,
   statsByPlan,
+  canManage,
   onCreate,
   onEdit,
 }: {
@@ -413,6 +422,7 @@ function DirectionRow({
   quarters: { id: string; label: string }[];
   planByCell: Map<string, DepartmentPlan>;
   statsByPlan: Map<string, DepartmentPlanStats>;
+  canManage: boolean;
   onCreate: (quarter_id: string) => void;
   onEdit: () => void;
 }) {
@@ -440,16 +450,18 @@ function DirectionRow({
       )}
     >
       <td className="sticky left-0 z-10 w-6 bg-card px-1 align-middle">
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          className="flex h-7 w-6 cursor-grab items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
-          aria-label="Перетащить отдел"
-          title="Перетащить, чтобы изменить порядок"
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </button>
+        {canManage ? (
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="flex h-7 w-6 cursor-grab items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
+            aria-label="Перетащить отдел"
+            title="Перетащить, чтобы изменить порядок"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
       </td>
       <td className="sticky left-6 z-10 bg-card px-4 py-3 align-middle">
         <div className="group/dir flex items-center gap-2">
@@ -458,15 +470,17 @@ function DirectionRow({
             style={{ backgroundColor: direction.color }}
           />
           <span className="font-medium">{direction.name}</span>
-          <button
-            type="button"
-            onClick={onEdit}
-            className="text-muted-foreground/40 transition-all hover:text-foreground group-hover/dir:text-muted-foreground"
-            aria-label="Редактировать отдел"
-            title="Редактировать отдел"
-          >
-            <Pencil className="h-3 w-3" />
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="text-muted-foreground/40 transition-all hover:text-foreground group-hover/dir:text-muted-foreground"
+              aria-label="Редактировать отдел"
+              title="Редактировать отдел"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </td>
       <td className="px-3 py-3 align-middle text-xs text-muted-foreground">
