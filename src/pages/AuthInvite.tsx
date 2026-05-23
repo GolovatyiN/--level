@@ -122,10 +122,10 @@ export default function AuthInvite() {
       <div className="w-full max-w-sm animate-scale-in rounded-xl border border-border bg-card p-8 shadow-elegant">
         <div className="mb-6 flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-foreground">
-            <span className="text-sm font-bold text-background">CH</span>
+            <span className="text-sm font-bold text-background">ST</span>
           </div>
           <div>
-            <h1 className="text-lg font-semibold">Company Hub</h1>
+            <h1 className="text-lg font-semibold">SEO Team Hub</h1>
             <p className="text-xs text-muted-foreground">Завершение регистрации</p>
           </div>
         </div>
