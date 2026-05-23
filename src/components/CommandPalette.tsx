@@ -116,11 +116,6 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               Планы и задачи
               <CommandShortcut>G T</CommandShortcut>
             </CommandItem>
-            <CommandItem onSelect={() => run(() => navigate("/tasks?view=kanban"))}>
-              <ListChecks className="mr-2 h-4 w-4" />
-              Канбан
-              <CommandShortcut>G K</CommandShortcut>
-            </CommandItem>
             <CommandItem onSelect={() => run(() => navigate("/kpi"))}>
               <Target className="mr-2 h-4 w-4" />
               Цели

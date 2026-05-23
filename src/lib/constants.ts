@@ -4,14 +4,15 @@ export type TaskStatus = Database["public"]["Enums"]["task_status"];
 export type TaskPriority = Database["public"]["Enums"]["task_priority"];
 
 export const STATUSES: { value: TaskStatus; label: string; colorVar: string }[] = [
-  { value: "backlog",     label: "Бэклог",        colorVar: "status-planned" },
-  { value: "planned",     label: "Запланировано", colorVar: "status-planned" },
-  { value: "in_progress", label: "В работе",      colorVar: "status-progress" },
-  { value: "at_risk",     label: "Под риском",    colorVar: "status-risk" },
-  { value: "blocked",     label: "Заблокирована", colorVar: "status-blocked" },
-  { value: "in_review",   label: "На проверке",   colorVar: "status-progress" },
-  { value: "completed",   label: "Завершена",     colorVar: "status-completed" },
-  { value: "cancelled",   label: "Отменена",      colorVar: "status-planned" },
+  { value: "backlog",        label: "Бэклог",          colorVar: "status-planned" },
+  { value: "planned",        label: "Запланировано",   colorVar: "status-planned" },
+  { value: "in_progress",    label: "В работе",        colorVar: "status-progress" },
+  { value: "at_risk",        label: "Под риском",      colorVar: "status-risk" },
+  { value: "blocked",        label: "Заблокирована",   colorVar: "status-blocked" },
+  { value: "in_review",      label: "На согласовании", colorVar: "status-progress" },
+  { value: "needs_revision", label: "На доработке",    colorVar: "status-risk" },
+  { value: "completed",      label: "Завершена",       colorVar: "status-completed" },
+  { value: "cancelled",      label: "Отменена",        colorVar: "status-planned" },
 ];
 
 export const PRIORITIES: { value: TaskPriority; label: string; colorVar: string }[] = [

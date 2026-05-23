@@ -43,12 +43,10 @@ const SORT_LABELS: { value: SortKey; label: string }[] = [
 export function TaskFilters({
   value,
   onChange,
-  hideStatus,
   includeArchived,
 }: {
   value: FiltersState;
   onChange: (v: FiltersState) => void;
-  hideStatus?: boolean;
   includeArchived?: boolean;
 }) {
   const { data: directions = [] } = useDirections();
@@ -104,17 +102,15 @@ export function TaskFilters({
           {quarterList.map((q) => <SelectItem key={q} value={q}>{quarterLabelRu(q)}</SelectItem>)}
         </SelectContent>
       </Select>
-      {!hideStatus && (
-        <Select value={value.status} onValueChange={(v) => set("status", v)}>
-          <SelectTrigger className="h-8 w-[160px] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все статусы</SelectItem>
-            <SelectItem value="active">Активные</SelectItem>
-            <SelectItem value="overdue">Просроченные</SelectItem>
-            {STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      )}
+      <Select value={value.status} onValueChange={(v) => set("status", v)}>
+        <SelectTrigger className="h-8 w-[160px] text-sm"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Все статусы</SelectItem>
+          <SelectItem value="active">Активные</SelectItem>
+          <SelectItem value="overdue">Просроченные</SelectItem>
+          {STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
       <Select value={value.priority} onValueChange={(v) => set("priority", v)}>
         <SelectTrigger className="h-8 w-[130px] text-sm"><SelectValue /></SelectTrigger>
         <SelectContent>

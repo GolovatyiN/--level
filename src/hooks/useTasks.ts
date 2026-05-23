@@ -27,6 +27,17 @@ export type Task = {
   direction_tag: string | null;
   asana_url: string | null;
   notes: string | null;
+  /**
+   * Последнее замечание руководителя по задаче. Полная история — в
+   * `task_history` (event_type = 'remark'). Показывается в колонке
+   * «Комментарий» таблицы плана.
+   */
+  latest_remark: string | null;
+  /**
+   * «Итог выполнения» — краткое описание результата задачи. Обычно
+   * заполняется после `completed`, но допустимо и раньше.
+   */
+  outcome: string | null;
   archived: boolean;
   created_at: string;
   updated_at: string;
@@ -125,13 +136,29 @@ export function useUpdateTask() {
         if (patch.priority && patch.priority !== prev.priority) changes.push(`приоритет: ${prev.priority} → ${patch.priority}`);
         if (patch.deadline !== undefined && patch.deadline !== prev.deadline) changes.push(`дедлайн изменён`);
         if (patch.notes !== undefined && patch.notes !== prev.notes) changes.push(`заметки обновлены`);
+        // Логируем remark и outcome отдельными событиями, чтобы во вкладке
+        // «История» было видно, кто и когда оставил замечание / итог.
+        if (patch.latest_remark !== undefined && patch.latest_remark !== prev.latest_remark) {
+          if (patch.latest_remark) {
+            await logHistory(id, "remark", `Комментарий: ${patch.latest_remark}`);
+          } else {
+            await logHistory(id, "remark", "Комментарий очищен");
+          }
+        }
+        if (patch.outcome !== undefined && patch.outcome !== prev.outcome) {
+          if (patch.outcome) {
+            await logHistory(id, "outcome", `Итог: ${patch.outcome}`);
+          } else {
+            await logHistory(id, "outcome", "Итог очищен");
+          }
+        }
         if (changes.length) await logHistory(id, "updated", changes.join("; "));
       }
       return data;
     },
     // Optimistic update — apply the patch to all cached task lists *before*
-    // the network round-trip. The Kanban card snaps to the new column the
-    // instant the user drops it; if the server rejects, we roll back.
+    // the network round-trip. Inline status-dropdown в таблице обновляется
+    // моментально; если сервер откажет, откатываем кэш.
     onMutate: async ({ id, patch }) => {
       await qc.cancelQueries({ queryKey: ["tasks"] });
       const snapshots = qc.getQueriesData<Task[]>({ queryKey: ["tasks"] });

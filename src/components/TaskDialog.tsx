@@ -260,6 +260,40 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
             <Textarea value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} placeholder="Контекст, договорённости..." />
           </div>
 
+          {/* Поля «Комментарий» и «Итог» добавлены в Phase 1 редизайна
+              страницы квартального плана. latest_remark — последнее
+              замечание руководителя (обязательно при статусе
+              «На доработке»), outcome — краткий итог выполнения. */}
+          <div className="grid gap-1.5">
+            <Label>
+              Комментарий руководителя
+              {form.status === "needs_revision" && (
+                <span className="ml-1 text-destructive">*</span>
+              )}
+            </Label>
+            <Textarea
+              value={form.latest_remark ?? ""}
+              onChange={(e) => set("latest_remark", e.target.value)}
+              rows={2}
+              placeholder="Что нужно доработать, замечания по содержанию..."
+            />
+            {form.status === "needs_revision" && !form.latest_remark?.trim() && (
+              <p className="text-[11px] text-destructive">
+                При переводе в «На доработке» комментарий обязателен.
+              </p>
+            )}
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Итог выполнения</Label>
+            <Textarea
+              value={form.outcome ?? ""}
+              onChange={(e) => set("outcome", e.target.value)}
+              rows={2}
+              placeholder="Краткий результат: статья опубликована, регламент утверждён..."
+            />
+          </div>
+
           <div className="grid gap-1.5">
             <Label htmlFor="task-direction-tag">Направление</Label>
             <Input

@@ -17,8 +17,22 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { MultiSelectPopover } from "@/components/MultiSelectPopover";
+import { PriorityBadge } from "@/components/StatusBadge";
+import { TaskStatusSelect } from "@/components/TaskStatusSelect";
+import { isOverdue } from "@/lib/utils";
+import { STATUSES } from "@/lib/constants";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,17 +45,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PageLoader, Spinner } from "@/components/UiState";
 import { PlanStatusBadge } from "@/components/PlanStatusBadge";
-import { TaskCard } from "@/components/TaskCard";
+import { Label } from "@/components/ui/label";
 import { TaskDialog } from "@/components/TaskDialog";
 import {
   PLAN_STATUS_LABELS,
+  PLAN_OUTCOME_FIELDS,
   type PlanStatus,
+  type PlanOutcomeField,
+  type DepartmentPlan,
   useAddPlanComment,
   useDeletePlanComment,
   usePlan,
   usePlanActivity,
   usePlanComments,
   usePlanStats,
+  useUpdatePlanOutcomes,
   useUpdatePlanStatus,
   COMMENT_KIND_LABELS,
 } from "@/hooks/usePlans";
@@ -195,14 +213,19 @@ export default function PlanDetail() {
           </div>
         </div>
 
-        {/* Stats strip */}
-        <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          <StatCell label="Прогресс"   value={`${planStats?.progress_pct ?? 0}%`} bar={planStats?.progress_pct ?? 0} />
-          <StatCell label="Всего"      value={planStats?.total_tasks ?? 0} />
-          <StatCell label="Завершено"  value={planStats?.completed_tasks ?? 0}  tone="success" />
-          <StatCell label="В работе"   value={planStats?.in_progress_tasks ?? 0} tone="info" />
-          <StatCell label="Под риском" value={planStats?.at_risk_tasks ?? 0}    tone="warning" />
-          <StatCell label="Просрочено" value={planStats?.overdue_tasks ?? 0}    tone="destructive" />
+        {/* Stats strip. `planStats` приходит от usePlanStats (view'ха в БД)
+            и не содержит счётчиков «Не начато» / «На согласовании» /
+            «На доработке», поэтому считаем их клиентом из `planTasks`. */}
+        <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
+          <StatCell label="Прогресс"        value={`${planStats?.progress_pct ?? 0}%`} bar={planStats?.progress_pct ?? 0} />
+          <StatCell label="Всего"           value={planStats?.total_tasks ?? 0} />
+          <StatCell label="Завершено"       value={planStats?.completed_tasks ?? 0}                                          tone="success" />
+          <StatCell label="В работе"        value={planStats?.in_progress_tasks ?? 0}                                       tone="info" />
+          <StatCell label="Не начато"       value={planTasks.filter((t) => t.status === "backlog" || t.status === "planned").length} />
+          <StatCell label="На согласовании" value={planTasks.filter((t) => t.status === "in_review").length}                tone="info" />
+          <StatCell label="На доработке"    value={planTasks.filter((t) => t.status === "needs_revision").length}           tone="warning" />
+          <StatCell label="Под риском"      value={planStats?.at_risk_tasks ?? 0}                                            tone="warning" />
+          <StatCell label="Просрочено"      value={planStats?.overdue_tasks ?? 0}                                            tone="destructive" />
         </div>
       </div>
 
@@ -241,7 +264,7 @@ export default function PlanDetail() {
             <HistoryTab plan={plan} />
           </TabsContent>
           <TabsContent value="summary" className="animate-fade-in">
-            <SummaryTab plan={plan} canEdit={canEdit || canManage} />
+            <OutcomesTab plan={plan} canEdit={canEdit || canManage} />
           </TabsContent>
         </Tabs>
       </div>
@@ -356,10 +379,21 @@ function StatCell({
 // Tabs
 // ---------------------------------------------------------------------------
 
+/**
+ * Plan-level task list.
+ *
+ * Phase 1 редизайна: вместо карточек — полноценная таблица со всеми
+ * колонками из ТЗ (Название, Статус, Приоритет, Ответственный, Дедлайн,
+ * Комментарий, Итог, Дата создания, Дата обновления). Сверху — поиск и
+ * multi-select по статусу; колонки кликабельны для сортировки. Клик по
+ * строке открывает TaskDialog, где можно редактировать те же поля, плюс
+ * latest_remark и outcome.
+ *
+ * Канбан-режим, скрытие/перестановка колонок и массовые действия —
+ * в Phase 2.
+ */
 function TasksTab({
-  plan,
   tasks,
-  direction,
   canEdit,
   onEdit,
   onCreate,
@@ -371,6 +405,74 @@ function TasksTab({
   onEdit: (t: Task) => void;
   onCreate: () => void;
 }) {
+  const { map: userMap } = useUserMap();
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  type SortKey =
+    | "title"
+    | "status"
+    | "priority"
+    | "assignee"
+    | "deadline"
+    | "remark"
+    | "outcome"
+    | "created_at"
+    | "updated_at";
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "updated_at",
+    dir: "desc",
+  });
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
+
+  const filtered = useMemo(() => {
+    let r = tasks;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      r = r.filter((t) =>
+        `${t.title} ${t.description ?? ""} ${t.latest_remark ?? ""} ${t.outcome ?? ""}`
+          .toLowerCase()
+          .includes(q),
+      );
+    }
+    if (statusFilter.length > 0) {
+      r = r.filter((t) => statusFilter.includes(t.status));
+    }
+    const dir = sort.dir === "asc" ? 1 : -1;
+    const ts = (v: string | null | undefined) => (v ? new Date(v).getTime() : 0);
+    const cmp: Record<SortKey, (a: Task, b: Task) => number> = {
+      title:      (a, b) => a.title.localeCompare(b.title) * dir,
+      status:     (a, b) => a.status.localeCompare(b.status) * dir,
+      priority:   (a, b) => a.priority.localeCompare(b.priority) * dir,
+      assignee:   (a, b) => ((userMap.get(a.assignee_id ?? "") ?? a.assignee ?? "")
+        .localeCompare(userMap.get(b.assignee_id ?? "") ?? b.assignee ?? "") * dir),
+      deadline:   (a, b) => (ts(a.deadline) - ts(b.deadline)) * dir,
+      remark:     (a, b) => (a.latest_remark ?? "").localeCompare(b.latest_remark ?? "") * dir,
+      outcome:    (a, b) => (a.outcome ?? "").localeCompare(b.outcome ?? "") * dir,
+      created_at: (a, b) => (ts(a.created_at) - ts(b.created_at)) * dir,
+      updated_at: (a, b) => (ts(a.updated_at) - ts(b.updated_at)) * dir,
+    };
+    return [...r].sort(cmp[sort.key]);
+  }, [tasks, search, statusFilter, sort, userMap]);
+
+  const SortHead = ({ k, label }: { k: SortKey; label: string }) => (
+    <TableHead
+      onClick={() => toggleSort(k)}
+      className="cursor-pointer select-none whitespace-nowrap hover:text-foreground"
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {sort.key === k && (
+          <span className="text-[10px] text-muted-foreground">{sort.dir === "asc" ? "↑" : "↓"}</span>
+        )}
+      </span>
+    </TableHead>
+  );
+
   if (tasks.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border p-12 text-center">
@@ -383,19 +485,117 @@ function TasksTab({
       </div>
     );
   }
+
   return (
     <div className="space-y-3">
-      {canEdit && (
-        <div className="flex justify-end">
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Поиск по названию, замечанию, итогу..."
+          className="h-8 w-64 text-sm"
+        />
+        <MultiSelectPopover
+          placeholder="Статус"
+          options={STATUSES.map((s) => ({ value: s.value, label: s.label }))}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+          triggerClassName="min-w-[140px]"
+        />
+        <span className="ml-auto text-xs text-muted-foreground">
+          Показано: {filtered.length} из {tasks.length}
+        </span>
+        {canEdit && (
           <Button onClick={onCreate} size="sm">
             <Plus className="mr-1 h-4 w-4" /> Добавить задачу
           </Button>
-        </div>
-      )}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {tasks.map((t) => (
-          <TaskCard key={t.id} task={t} direction={direction} onClick={() => onEdit(t)} />
-        ))}
+        )}
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-border bg-card scrollbar-thin">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortHead k="title"      label="Название" />
+              <SortHead k="status"     label="Статус" />
+              <SortHead k="priority"   label="Приоритет" />
+              <SortHead k="assignee"   label="Ответственный" />
+              <SortHead k="deadline"   label="Дедлайн" />
+              <SortHead k="remark"     label="Комментарий" />
+              <SortHead k="outcome"    label="Итог" />
+              <SortHead k="created_at" label="Создана" />
+              <SortHead k="updated_at" label="Обновлена" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((t) => {
+              const assigneeName = t.assignee_id
+                ? userMap.get(t.assignee_id) ?? null
+                : t.assignee;
+              const overdue = isOverdue(t);
+              return (
+                <TableRow
+                  key={t.id}
+                  className="cursor-pointer hover:bg-muted/40"
+                  onClick={() => onEdit(t)}
+                >
+                  <TableCell className="max-w-[260px]">
+                    <div className="font-medium">{t.title}</div>
+                    {t.description && (
+                      <div className="truncate text-xs text-muted-foreground">{t.description}</div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <TaskStatusSelect task={t} disabled={!canEdit} />
+                  </TableCell>
+                  <TableCell><PriorityBadge priority={t.priority} /></TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {assigneeName ?? "—"}
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      "whitespace-nowrap text-sm text-muted-foreground",
+                      overdue && "font-medium text-destructive",
+                    )}
+                  >
+                    {t.deadline ? format(parseISO(t.deadline), "dd.MM.yyyy") : "—"}
+                  </TableCell>
+                  <TableCell className="max-w-[200px] text-sm">
+                    {t.latest_remark ? (
+                      <span className="block truncate text-muted-foreground" title={t.latest_remark}>
+                        {t.latest_remark}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/50">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-[200px] text-sm">
+                    {t.outcome ? (
+                      <span className="block truncate text-muted-foreground" title={t.outcome}>
+                        {t.outcome}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/50">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                    {format(parseISO(t.created_at), "dd.MM.yyyy")}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                    {format(parseISO(t.updated_at), "dd.MM.yyyy")}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {filtered.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                  Под текущие фильтры задач не найдено.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -556,61 +756,73 @@ function HistoryTab({ plan }: { plan: { id: string } }) {
   );
 }
 
-function SummaryTab({ plan, canEdit }: { plan: { id: string }; canEdit: boolean }) {
-  const { data: items = [] } = usePlanComments(plan.id);
-  const add = useAddPlanComment();
-  const [text, setText] = useState("");
-
-  const summaries = items.filter((c) => c.kind === "final_review" || c.is_final);
-
-  const submit = async () => {
-    if (!text.trim()) return;
-    await add.mutateAsync({
-      plan_id: plan.id,
-      content: text.trim(),
-      kind: "final_review",
-      is_final: true,
+/**
+ * «Итоги» — структурированный пост-мортем квартала по 8 полям из ТЗ.
+ * Сохраняется на самом плане (`department_plans.outcome_*`). Каждое
+ * поле редактируется отдельно и сохраняется кнопкой «Сохранить итоги».
+ *
+ * Версионирование изменений вкладки — в Phase 2 (отдельная таблица
+ * outcomes_history). Пока правки видны через стандартный updated_at
+ * на плане и через события комментариев final_review.
+ */
+function OutcomesTab({ plan, canEdit }: { plan: DepartmentPlan; canEdit: boolean }) {
+  const update = useUpdatePlanOutcomes();
+  const [form, setForm] = useState<Record<PlanOutcomeField, string>>(() => {
+    const acc = {} as Record<PlanOutcomeField, string>;
+    PLAN_OUTCOME_FIELDS.forEach((f) => {
+      acc[f.key] = (plan as any)[f.key] ?? "";
     });
-    setText("");
+    return acc;
+  });
+  const [savedSnapshot, setSavedSnapshot] = useState(form);
+
+  const dirty = PLAN_OUTCOME_FIELDS.some((f) => form[f.key] !== savedSnapshot[f.key]);
+
+  const save = async () => {
+    const patch: Partial<Record<PlanOutcomeField, string | null>> = {};
+    PLAN_OUTCOME_FIELDS.forEach((f) => {
+      if (form[f.key] !== savedSnapshot[f.key]) {
+        patch[f.key] = form[f.key].trim() || null;
+      }
+    });
+    if (Object.keys(patch).length === 0) return;
+    await update.mutateAsync({ plan_id: plan.id, patch });
+    setSavedSnapshot({ ...form });
   };
 
   return (
     <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-2">
+        {PLAN_OUTCOME_FIELDS.map((f) => (
+          <div key={f.key} className="grid gap-1.5 rounded-lg border border-border bg-card p-3">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {f.label}
+            </Label>
+            <Textarea
+              rows={4}
+              value={form[f.key]}
+              onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+              disabled={!canEdit}
+              placeholder={canEdit ? "Заполните по итогам квартала..." : "—"}
+            />
+          </div>
+        ))}
+      </div>
+
       {canEdit && (
-        <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-          <Textarea
-            rows={4}
-            placeholder="Итог квартала: что выполнено, что не получилось, выводы для следующего планирования..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <Button size="sm" onClick={submit} disabled={!text.trim() || add.isPending} className="w-full">
-            {add.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Trophy className="mr-1 h-3.5 w-3.5" />}
-            Добавить итог
+        <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-2 border-t border-border bg-background/95 px-4 py-2 backdrop-blur sm:-mx-8 sm:px-8">
+          <span className="mr-auto text-xs text-muted-foreground">
+            {dirty ? "Есть несохранённые изменения" : "Все изменения сохранены"}
+          </span>
+          <Button size="sm" onClick={save} disabled={!dirty || update.isPending}>
+            {update.isPending ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trophy className="mr-1 h-3.5 w-3.5" />
+            )}
+            Сохранить итоги
           </Button>
         </div>
-      )}
-
-      {summaries.length === 0 ? (
-        <p className="py-6 text-center text-xs text-muted-foreground">
-          Итогов пока нет. Они добавляются автоматически при завершении плана.
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {summaries.map((c) => (
-            <li key={c.id} className="rounded-lg border border-foreground/30 bg-foreground/5 p-3">
-              <div className="mb-1 flex items-center gap-2 text-xs">
-                <Trophy className="h-3.5 w-3.5 text-foreground" />
-                <span className="font-medium">{c.author_name ?? "—"}</span>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-muted-foreground">
-                  {format(parseISO(c.created_at), "dd.MM.yyyy HH:mm")}
-                </span>
-              </div>
-              <p className="text-sm whitespace-pre-wrap">{c.content}</p>
-            </li>
-          ))}
-        </ul>
       )}
     </div>
   );
