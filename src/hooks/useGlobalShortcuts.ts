@@ -21,7 +21,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
  * Wires up app-wide keyboard shortcuts:
  *   ⌘K / Ctrl+K / "/" — open command palette
  *   N                 — create new task
- *   G then D/R/K/T/P  — go to dashboard / roadmap / kanban / table / kpi
+ *   G then D/R/T/P    — go to dashboard / roadmap / tasks / kpi
  *
  * Skips while the user is typing in any input/textarea/contenteditable so we
  * never steal text input.
@@ -83,7 +83,6 @@ export function useGlobalShortcuts({ onOpenPalette, onNewTask }: Options) {
           k === "d" ? "/" :
           k === "l" ? "/plans" :
           k === "t" ? "/tasks" :
-          k === "k" ? "/tasks?view=kanban" :
           k === "p" ? "/kpi" :
           k === "a" ? "/archive" :
           null;

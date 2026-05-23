@@ -29,7 +29,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MultiSelectPopover } from "@/components/MultiSelectPopover";
-import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
+import { PriorityBadge } from "@/components/StatusBadge";
+import { TaskStatusSelect } from "@/components/TaskStatusSelect";
 import { isOverdue } from "@/lib/utils";
 import { STATUSES } from "@/lib/constants";
 import {
@@ -544,7 +545,9 @@ function TasksTab({
                       <div className="truncate text-xs text-muted-foreground">{t.description}</div>
                     )}
                   </TableCell>
-                  <TableCell><StatusBadge status={t.status} /></TableCell>
+                  <TableCell>
+                    <TaskStatusSelect task={t} disabled={!canEdit} />
+                  </TableCell>
                   <TableCell><PriorityBadge priority={t.priority} /></TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {assigneeName ?? "—"}

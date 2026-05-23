@@ -17,7 +17,7 @@ type Capability = {
 };
 
 const CAPS: Capability[] = [
-  { key: "view",             label: "Просмотр данных",       description: "Дашборд, Roadmap, Kanban, Таблица, KPI" },
+  { key: "view",             label: "Просмотр данных",       description: "Дашборд, Roadmap, Таблица, KPI" },
   { key: "create",           label: "Создание",              description: "Задачи, KPI, отделы, теги" },
   { key: "edit",             label: "Редактирование",        description: "Изменение задач и KPI, в т.ч. чужих" },
   { key: "delete",           label: "Удаление",              description: "Удаление задач, KPI, тегов" },

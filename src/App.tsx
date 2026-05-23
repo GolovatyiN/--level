@@ -85,7 +85,9 @@ const App = () => (
                 <Route path="/quarters/:id" element={<QuarterDetail />} />
                 {/* Redirects from old paths to keep deep links alive. */}
                 <Route path="/roadmap" element={<Tasks />} />
-                <Route path="/kanban" element={<Tasks />} />
+                {/* /kanban — старый канбан-режим. Канбан удалён, ведём
+                    пользователя на единую таблицу задач. */}
+                <Route path="/kanban" element={<Navigate to="/tasks" replace />} />
                 <Route path="/table" element={<Tasks />} />
                 <Route path="/kpi" element={<KpiPage />} />
                 {/* /directions расформирован — функция отделов перенесена

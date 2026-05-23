@@ -157,8 +157,8 @@ export function useUpdateTask() {
       return data;
     },
     // Optimistic update — apply the patch to all cached task lists *before*
-    // the network round-trip. The Kanban card snaps to the new column the
-    // instant the user drops it; if the server rejects, we roll back.
+    // the network round-trip. Inline status-dropdown в таблице обновляется
+    // моментально; если сервер откажет, откатываем кэш.
     onMutate: async ({ id, patch }) => {
       await qc.cancelQueries({ queryKey: ["tasks"] });
       const snapshots = qc.getQueriesData<Task[]>({ queryKey: ["tasks"] });
