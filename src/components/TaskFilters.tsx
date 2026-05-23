@@ -179,7 +179,9 @@ export function applyFilters<
     }
     if (f.status !== "all") {
       if (f.status === "active") {
-        if (t.status === "completed") return false;
+        // "Активные" = ещё открытые. Завершённые и отменённые считаем
+        // закрытыми, и обе категории сюда не попадают.
+        if (t.status === "completed" || t.status === "cancelled") return false;
       } else if (f.status === "overdue") {
         if (!isOverdue(t)) return false;
       } else if (t.status !== f.status) return false;
