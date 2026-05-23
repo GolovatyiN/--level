@@ -51,6 +51,22 @@ export function currentQuarter(): string {
   return `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}`;
 }
 
+/**
+ * Хронологическое сравнение лейблов вида "Q3 2026".
+ * Лексикографический `.sort()` ставит «Q1 2027» раньше «Q2 2026» — это
+ * неправильно. Этот компаратор сортирует сначала по году, потом по
+ * номеру квартала, как и ожидает пользователь.
+ */
+export function compareQuarters(a: string, b: string): number {
+  const re = /Q([1-4])\s*(\d{4})/i;
+  const ma = a.match(re);
+  const mb = b.match(re);
+  if (!ma || !mb) return a.localeCompare(b);
+  const yearDiff = parseInt(ma[2], 10) - parseInt(mb[2], 10);
+  if (yearDiff !== 0) return yearDiff;
+  return parseInt(ma[1], 10) - parseInt(mb[1], 10);
+}
+
 export const DIRECTION_COLORS = [
   "#6366f1", "#22c55e", "#f97316", "#ef4444", "#06b6d4",
   "#eab308", "#ec4899", "#8b5cf6", "#14b8a6", "#f59e0b",

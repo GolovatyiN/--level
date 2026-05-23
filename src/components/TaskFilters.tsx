@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { useDirections } from "@/hooks/useDirections";
 import { useTasks } from "@/hooks/useTasks";
-import { PRIORITIES, QUARTERS, STATUSES, quarterLabelRu } from "@/lib/constants";
+import { PRIORITIES, QUARTERS, STATUSES, compareQuarters, quarterLabelRu } from "@/lib/constants";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { useMemo } from "react";
 import { isOverdue } from "@/lib/utils";
@@ -57,7 +57,7 @@ export function TaskFilters({
   const quarterList = useMemo(() => {
     const set = new Set<string>(QUARTERS);
     dynamicQuarters.forEach((q) => set.add(q.label));
-    return Array.from(set).sort();
+    return Array.from(set).sort(compareQuarters);
   }, [dynamicQuarters]);
 
   const assignees = useMemo(() => {

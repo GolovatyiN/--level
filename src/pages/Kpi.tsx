@@ -7,7 +7,7 @@ import { useDirections } from "@/hooks/useDirections";
 import { Kpi, useKpis } from "@/hooks/useKpis";
 import { KpiDialog } from "@/components/KpiDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { QUARTERS, currentQuarter, quarterLabelRu } from "@/lib/constants";
+import { QUARTERS, compareQuarters, currentQuarter, quarterLabelRu } from "@/lib/constants";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { parseISO, eachDayOfInterval, startOfQuarter, endOfQuarter, format } from "date-fns";
 import { isOverdue } from "@/lib/utils";
@@ -25,7 +25,7 @@ export default function KpiPage() {
   const quarterList = useMemo(() => {
     const s = new Set<string>(QUARTERS);
     dynamicQuarters.forEach((q) => s.add(q.label));
-    return Array.from(s).sort();
+    return Array.from(s).sort(compareQuarters);
   }, [dynamicQuarters]);
 
   const [quarter, setQuarter] = useState<string>(currentQuarter());
