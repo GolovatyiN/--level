@@ -149,13 +149,45 @@ export function InviteUserDialog({ open, onOpenChange }: Props) {
 
   const copy = async () => {
     if (!link) return;
-    try {
-      await navigator.clipboard.writeText(link);
+    // navigator.clipboard работает только в secure context (HTTPS или
+    // localhost). На HTTP-сайте (например, на голом IP) API недоступен.
+    // Падаем на legacy document.execCommand("copy") через скрытую textarea.
+    const tryModern = async () => {
+      if (typeof navigator === "undefined" || !navigator.clipboard) return false;
+      try {
+        await navigator.clipboard.writeText(link);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    const tryLegacy = () => {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = link;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        ta.style.top = "0";
+        ta.setAttribute("readonly", "");
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    };
+
+    const ok = (await tryModern()) || tryLegacy();
+    if (ok) {
       setCopied(true);
       toast.success("Ссылка скопирована");
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Не удалось скопировать");
+    } else {
+      toast.error("Не удалось скопировать. Выделите ссылку вручную и скопируйте (Cmd+C).");
     }
   };
 
