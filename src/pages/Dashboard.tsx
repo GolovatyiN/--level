@@ -162,8 +162,8 @@ export default function Dashboard() {
         {/* 2. Priorities — scoped to the dashboard's quarter+direction. */}
         <PrioritiesSummaryWidget quarter={quarter} direction={direction} />
 
-        {/* 3. Quarterly plans */}
-        <PlansSummaryWidget />
+        {/* 3. Quarterly plans — статистика по всем отделам в выбранном квартале */}
+        <PlansSummaryWidget quarter={quarter} />
 
         {/* 4. По отделам — каждая карточка кликабельна и открывает модалку */}
         <div>
