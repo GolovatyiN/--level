@@ -78,7 +78,6 @@ function TableView({ filters, onEdit }: { filters: FiltersState; onEdit: (t: Tas
               <TableHead>Задача</TableHead>
               <TableHead>Направление</TableHead>
               <TableHead>Квартал</TableHead>
-              <TableHead>Заказчик</TableHead>
               <TableHead>Приоритет</TableHead>
               <TableHead>Дедлайн</TableHead>
               <TableHead>Статус</TableHead>
@@ -117,7 +116,6 @@ function TableView({ filters, onEdit }: { filters: FiltersState; onEdit: (t: Tas
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{t.quarter}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{t.customer ?? "—"}</TableCell>
                   <TableCell><PriorityBadge priority={t.priority} /></TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {t.deadline ? format(parseISO(t.deadline), "dd.MM.yyyy") : "—"}
@@ -146,7 +144,7 @@ function TableView({ filters, onEdit }: { filters: FiltersState; onEdit: (t: Tas
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10} className="py-12 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-12 text-center text-muted-foreground">
                   {isLoading && tasks.length === 0 ? (
                     <span className="inline-flex items-center gap-2"><Spinner /> Загрузка...</span>
                   ) : tasks.length === 0 ? (
