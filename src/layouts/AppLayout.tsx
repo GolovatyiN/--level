@@ -1,10 +1,8 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
-  ListChecks,
   Archive,
   Plus,
-  Target,
   ClipboardCheck,
   Menu,
   X,
@@ -28,8 +26,6 @@ import { cn, isOverdue } from "@/lib/utils";
 const NAV = [
   { to: "/", label: "Панель управления", icon: LayoutDashboard, end: true },
   { to: "/plans", label: "Квартальные планы", icon: ClipboardCheck },
-  { to: "/tasks", label: "Планы и задачи", icon: ListChecks },
-  { to: "/kpi", label: "Цели", icon: Target },
   { to: "/archive", label: "Архив", icon: Archive },
 ];
 
@@ -157,7 +153,7 @@ export function AppLayout() {
         {overdueCount > 0 && (
           <button
             type="button"
-            onClick={() => navigate("/tasks?status=overdue")}
+            onClick={() => navigate("/plans")}
             className="flex w-full animate-fade-in items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/10"
             title={`${overdueCount} задач просрочено`}
           >

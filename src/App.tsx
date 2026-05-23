@@ -8,12 +8,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
-import Tasks from "./pages/Tasks.tsx";
 import Plans from "./pages/Plans.tsx";
 import PlanDetail from "./pages/PlanDetail.tsx";
 import QuarterDetail from "./pages/QuarterDetail.tsx";
 import Archive from "./pages/Archive.tsx";
-import KpiPage from "./pages/Kpi.tsx";
 import Management from "./pages/Management.tsx";
 import Profile from "./pages/Profile.tsx";
 import AuthInvite from "./pages/AuthInvite.tsx";
@@ -79,17 +77,19 @@ const App = () => (
               <Route path="/invite/:fallback" element={<AuthInvite />} />
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/tasks" element={<Tasks />} />
                 <Route path="/plans" element={<Plans />} />
                 <Route path="/plans/:id" element={<PlanDetail />} />
                 <Route path="/quarters/:id" element={<QuarterDetail />} />
-                {/* Redirects from old paths to keep deep links alive. */}
-                <Route path="/roadmap" element={<Tasks />} />
-                {/* /kanban — старый канбан-режим. Канбан удалён, ведём
-                    пользователя на единую таблицу задач. */}
-                <Route path="/kanban" element={<Navigate to="/tasks" replace />} />
-                <Route path="/table" element={<Tasks />} />
-                <Route path="/kpi" element={<KpiPage />} />
+                {/* /tasks, /roadmap, /kanban, /table — старая страница
+                    «Планы и задачи» удалена; всё управление задачами
+                    переехало внутрь /plans/:id. */}
+                <Route path="/tasks" element={<Navigate to="/plans" replace />} />
+                <Route path="/roadmap" element={<Navigate to="/plans" replace />} />
+                <Route path="/kanban" element={<Navigate to="/plans" replace />} />
+                <Route path="/table" element={<Navigate to="/plans" replace />} />
+                {/* /kpi — раздел «Цели» расформирован. Сохраняем редирект,
+                    чтобы старые закладки и уведомления не падали в 404. */}
+                <Route path="/kpi" element={<Navigate to="/plans" replace />} />
                 {/* /directions расформирован — функция отделов перенесена
                     в раздел «Квартальные планы». Сохраняем редирект, чтобы
                     старые закладки и уведомления продолжали работать. */}

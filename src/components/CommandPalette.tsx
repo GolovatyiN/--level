@@ -4,11 +4,9 @@ import {
   Archive,
   ClipboardCheck,
   LayoutDashboard,
-  ListChecks,
   ListTodo,
   Plus,
   ShieldCheck,
-  Target,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -21,11 +19,9 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { useTasks, type Task } from "@/hooks/useTasks";
-import { useKpis, type Kpi } from "@/hooks/useKpis";
 import { useDirections } from "@/hooks/useDirections";
 import { useCanManage } from "@/hooks/useUserRole";
 import { TaskDialog } from "@/components/TaskDialog";
-import { KpiDialog } from "@/components/KpiDialog";
 
 interface Props {
   open: boolean;
@@ -33,20 +29,17 @@ interface Props {
 }
 
 /**
- * Universal ⌘K command palette: search tasks/KPIs/directions, jump to pages,
+ * Universal ⌘K command palette: search tasks/directions, jump to pages,
  * fire quick actions. Mounted once globally; all callers just toggle `open`.
  */
 export function CommandPalette({ open, onOpenChange }: Props) {
   const navigate = useNavigate();
   const canManage = useCanManage();
   const { data: tasks = [] } = useTasks(true);
-  const { data: kpis = [] } = useKpis();
   const { data: directions = [] } = useDirections();
 
   const [taskOpen, setTaskOpen] = useState(false);
-  const [kpiOpen, setKpiOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [editingKpi, setEditingKpi] = useState<Kpi | null>(null);
 
   // Reset internal state when the palette closes so search input doesn't
   // remember stale text on next open.
@@ -73,16 +66,11 @@ export function CommandPalette({ open, onOpenChange }: Props) {
         .slice(0, 12),
     [tasks],
   );
-  const recentKpis = useMemo(
-    () =>
-      [...kpis].sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? "")).slice(0, 8),
-    [kpis],
-  );
 
   return (
     <>
       <CommandDialog open={open} onOpenChange={onOpenChange}>
-        <CommandInput placeholder="Поиск задач, целей, отделов или команд..." />
+        <CommandInput placeholder="Поиск задач, отделов или команд..." />
         <CommandList>
           <CommandEmpty>Ничего не найдено.</CommandEmpty>
 
@@ -91,10 +79,6 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               <Plus className="mr-2 h-4 w-4" />
               Новая задача
               <CommandShortcut>N</CommandShortcut>
-            </CommandItem>
-            <CommandItem onSelect={() => run(() => setKpiOpen(true))}>
-              <Target className="mr-2 h-4 w-4" />
-              Новая цель
             </CommandItem>
           </CommandGroup>
 
@@ -110,16 +94,6 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               <ClipboardCheck className="mr-2 h-4 w-4" />
               Квартальные планы
               <CommandShortcut>G L</CommandShortcut>
-            </CommandItem>
-            <CommandItem onSelect={() => run(() => navigate("/tasks"))}>
-              <ListChecks className="mr-2 h-4 w-4" />
-              Планы и задачи
-              <CommandShortcut>G T</CommandShortcut>
-            </CommandItem>
-            <CommandItem onSelect={() => run(() => navigate("/kpi"))}>
-              <Target className="mr-2 h-4 w-4" />
-              Цели
-              <CommandShortcut>G P</CommandShortcut>
             </CommandItem>
             <CommandItem onSelect={() => run(() => navigate("/archive"))}>
               <Archive className="mr-2 h-4 w-4" />
@@ -144,7 +118,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
                       key={t.id}
                       // Prefix the value with the title and a short hash so cmdk
                       // can do good fuzzy matching even when titles repeat.
-                      value={`${t.title} ${t.assignee ?? ""} ${t.customer ?? ""} ${dir?.name ?? ""} ${t.id}`}
+                      value={`${t.title} ${t.assignee ?? ""} ${dir?.name ?? ""} ${t.id}`}
                       onSelect={() => run(() => setEditingTask(t))}
                     >
                       <ListTodo className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -164,27 +138,6 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               </CommandGroup>
             </>
           )}
-
-          {recentKpis.length > 0 && (
-            <>
-              <CommandSeparator />
-              <CommandGroup heading="Цели">
-                {recentKpis.map((k) => (
-                  <CommandItem
-                    key={k.id}
-                    value={`${k.name} ${k.owner ?? ""} ${k.id}`}
-                    onSelect={() => run(() => setEditingKpi(k))}
-                  >
-                    <Target className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <span className="truncate">{k.name}</span>
-                    <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                      {k.current_value}/{k.target_value} {k.unit}
-                    </span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </>
-          )}
         </CommandList>
       </CommandDialog>
 
@@ -193,12 +146,6 @@ export function CommandPalette({ open, onOpenChange }: Props) {
         open={!!editingTask}
         onOpenChange={(v) => !v && setEditingTask(null)}
         task={editingTask}
-      />
-      <KpiDialog open={kpiOpen} onOpenChange={setKpiOpen} />
-      <KpiDialog
-        open={!!editingKpi}
-        onOpenChange={(v) => !v && setEditingKpi(null)}
-        kpi={editingKpi}
       />
     </>
   );
