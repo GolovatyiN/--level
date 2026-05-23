@@ -2,7 +2,6 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   ListChecks,
-  Layers,
   Archive,
   Plus,
   Target,
@@ -31,7 +30,6 @@ const NAV = [
   { to: "/plans", label: "Квартальные планы", icon: ClipboardCheck },
   { to: "/tasks", label: "Планы и задачи", icon: ListChecks },
   { to: "/kpi", label: "Цели", icon: Target },
-  { to: "/directions", label: "Отделы", icon: Layers },
   { to: "/archive", label: "Архив", icon: Archive },
 ];
 

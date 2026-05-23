@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { CircleDashed, GripVertical, Loader2, Plus } from "lucide-react";
+import { CircleDashed, GripVertical, Loader2, Pencil, Plus } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/PageHeader";
 import { Spinner } from "@/components/UiState";
 import { PlanStatusBadge } from "@/components/PlanStatusBadge";
+import { DirectionDialog } from "@/components/DirectionDialog";
 import { MultiSelectPopover, type MultiSelectOption } from "@/components/MultiSelectPopover";
 import { useDirections, useReorderDirections, type Direction } from "@/hooks/useDirections";
 import { useQuarters } from "@/hooks/useTaxonomies";
@@ -216,6 +217,8 @@ export default function Plans() {
 
   // ---------- Misc ----------
   const [creatingFor, setCreatingFor] = useState<{ direction_id: string; quarter_id: string } | null>(null);
+  const [creatingDir, setCreatingDir] = useState(false);
+  const [editingDir, setEditingDir] = useState<Direction | null>(null);
 
   const anyFilterActive = filterDirs.length > 0 || filterStatuses.length > 0 || filterQuarters.length > 0;
 
@@ -238,6 +241,11 @@ export default function Plans() {
       <PageHeader
         title="Квартальные планы"
         description="Планы отделов на каждый квартал — статус, прогресс, согласование"
+        actions={
+          <Button onClick={() => setCreatingDir(true)} size="sm">
+            <Plus className="mr-1 h-4 w-4" /> Отдел
+          </Button>
+        }
       />
       <div className="p-4 sm:p-8">
         {/* Фильтры */}
@@ -351,6 +359,7 @@ export default function Plans() {
                           onCreate={(quarter_id) =>
                             setCreatingFor({ direction_id: d.id, quarter_id })
                           }
+                          onEdit={() => setEditingDir(d)}
                         />
                       );
                     })}
@@ -372,6 +381,16 @@ export default function Plans() {
           quarterLabel={quarterLabelRu(quarters.find((q) => q.id === creatingFor.quarter_id)?.label ?? "—")}
         />
       )}
+
+      {/* Создание / редактирование отдела. Раньше жило на отдельной странице
+          /directions, теперь — отсюда (см. PageHeader actions + кнопка-карандаш
+          в каждой строке таблицы). */}
+      <DirectionDialog open={creatingDir} onOpenChange={setCreatingDir} />
+      <DirectionDialog
+        open={!!editingDir}
+        onOpenChange={(v) => !v && setEditingDir(null)}
+        direction={editingDir}
+      />
     </>
   );
 }
@@ -387,6 +406,7 @@ function DirectionRow({
   planByCell,
   statsByPlan,
   onCreate,
+  onEdit,
 }: {
   direction: Direction;
   head: string | null;
@@ -394,6 +414,7 @@ function DirectionRow({
   planByCell: Map<string, DepartmentPlan>;
   statsByPlan: Map<string, DepartmentPlanStats>;
   onCreate: (quarter_id: string) => void;
+  onEdit: () => void;
 }) {
   const {
     attributes,
@@ -431,12 +452,21 @@ function DirectionRow({
         </button>
       </td>
       <td className="sticky left-6 z-10 bg-card px-4 py-3 align-middle">
-        <div className="flex items-center gap-2">
+        <div className="group/dir flex items-center gap-2">
           <span
             className="h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: direction.color }}
           />
           <span className="font-medium">{direction.name}</span>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-muted-foreground/40 transition-all hover:text-foreground group-hover/dir:text-muted-foreground"
+            aria-label="Редактировать отдел"
+            title="Редактировать отдел"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
         </div>
       </td>
       <td className="px-3 py-3 align-middle text-xs text-muted-foreground">
