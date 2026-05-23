@@ -165,18 +165,19 @@ export default function Dashboard() {
         {/* 3. Quarterly plans — статистика по всем отделам в выбранном квартале */}
         <PlansSummaryWidget quarter={quarter} />
 
-        {/* 4. По отделам — каждая карточка кликабельна и открывает модалку */}
+        {/* 4. По отделам — компактные KPI-карточки. Сетка адаптивная:
+            mobile = 1 / tablet = 2 / laptop = 3 / desktop ≥1440 = 4 в ряд.
+            auto-rows-fr + flex-col внутри карточки даёт одинаковую высоту
+            независимо от длины названия и количества бейджей. */}
         <div>
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground">По отделам</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid auto-rows-fr gap-2.5 md:grid-cols-2 lg:grid-cols-3 min-[1440px]:grid-cols-4">
             {directions.map((d) => {
               const t = baseFiltered.filter((x) => x.direction_id === d.id);
               const done = t.filter((x) => x.status === "completed").length;
               const pct = t.length ? Math.round((done / t.length) * 100) : 0;
-              const dirOverdue = t.filter(
-                isOverdue,
-              ).length;
-              const open = t.filter((x) => x.status !== "completed");
+              const dirOverdue = t.filter(isOverdue).length;
+              const open = t.filter((x) => x.status !== "completed" && x.status !== "cancelled");
               const critical = open.filter((x) => x.priority === "critical").length;
               const high     = open.filter((x) => x.priority === "high").length;
               const medium   = open.filter((x) => x.priority === "medium").length;
@@ -185,52 +186,65 @@ export default function Dashboard() {
                   key={d.id}
                   type="button"
                   onClick={() => setDepartmentDialog(d)}
-                  className="hover-lift group rounded-xl border border-border bg-card p-4 text-left shadow-card transition-all hover:border-foreground/30"
+                  className="hover-lift group flex h-full flex-col rounded-lg border border-border bg-card p-3 text-left shadow-card transition-all hover:border-foreground/30"
                 >
+                  {/* Header: цветная точка + название + всего задач */}
                   <div className="flex items-center gap-2">
                     <span
-                      className="h-2.5 w-2.5 rounded-full transition-transform duration-300 group-hover:scale-125"
+                      className="h-2 w-2 shrink-0 rounded-full transition-transform duration-300 group-hover:scale-125"
                       style={{ backgroundColor: d.color }}
                     />
-                    <span className="font-medium">{d.name}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      <AnimatedNumber value={t.length} duration={400} /> задач
+                    <span className="truncate text-sm font-medium" title={d.name}>
+                      {d.name}
+                    </span>
+                    <span className="ml-auto shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                      <AnimatedNumber value={t.length} duration={400} />
                     </span>
                   </div>
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+
+                  {/* Прогресс */}
+                  <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-foreground/80 transition-[width] duration-700 ease-out"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    <AnimatedNumber value={done} duration={400} /> из{" "}
-                    <AnimatedNumber value={t.length} duration={400} /> завершено
+                  <p className="mt-1.5 text-[11px] tabular-nums text-muted-foreground">
+                    <AnimatedNumber value={done} duration={400} />/{t.length} · {pct}%
                   </p>
-                  {(dirOverdue > 0 || critical > 0 || high > 0 || medium > 0) && (
-                    <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
-                      {dirOverdue > 0 && (
-                        <span className="rounded bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive">
-                          Просрочено: {dirOverdue}
-                        </span>
-                      )}
-                      {critical > 0 && (
-                        <span className="inline-flex items-center gap-0.5 rounded bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive">
-                          <Flame className="h-2.5 w-2.5" /> {critical}
-                        </span>
-                      )}
-                      {high > 0 && (
-                        <span className="rounded bg-warning/10 px-1.5 py-0.5 font-medium text-warning">
-                          Высокие: {high}
-                        </span>
-                      )}
-                      {medium > 0 && (
-                        <span className="rounded bg-info/10 px-1.5 py-0.5 font-medium text-info">
-                          Средние: {medium}
-                        </span>
-                      )}
-                    </div>
-                  )}
+
+                  {/* Бейджи (mt-auto прижимает к низу, выравнивая карточки) */}
+                  <div className="mt-auto flex flex-wrap gap-1 pt-2 text-[10px]">
+                    {dirOverdue > 0 && (
+                      <span className="rounded bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive">
+                        Просрочено: {dirOverdue}
+                      </span>
+                    )}
+                    {critical > 0 && (
+                      <span
+                        className="inline-flex items-center gap-0.5 rounded bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive"
+                        title="Критические"
+                      >
+                        <Flame className="h-2.5 w-2.5" /> {critical}
+                      </span>
+                    )}
+                    {high > 0 && (
+                      <span
+                        className="rounded bg-warning/10 px-1.5 py-0.5 font-medium text-warning"
+                        title="Высокий приоритет"
+                      >
+                        Выс.: {high}
+                      </span>
+                    )}
+                    {medium > 0 && (
+                      <span
+                        className="rounded bg-info/10 px-1.5 py-0.5 font-medium text-info"
+                        title="Средний приоритет"
+                      >
+                        Ср.: {medium}
+                      </span>
+                    )}
+                  </div>
                 </button>
               );
             })}
