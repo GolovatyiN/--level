@@ -22,7 +22,7 @@ import { DepartmentTasksDialog } from "@/components/DepartmentTasksDialog";
 import { useTasks } from "@/hooks/useTasks";
 import { useDirections, type Direction } from "@/hooks/useDirections";
 import { useQuarters } from "@/hooks/useTaxonomies";
-import { QUARTERS, currentQuarter, quarterLabelRu } from "@/lib/constants";
+import { QUARTERS, compareQuarters, currentQuarter, quarterLabelRu } from "@/lib/constants";
 
 type StatusKey = "all" | "in_progress" | "at_risk" | "blocked" | "completed" | "overdue";
 
@@ -48,7 +48,9 @@ export default function Dashboard() {
   const quarterList = useMemo(() => {
     const set = new Set<string>(QUARTERS);
     dynamicQuarters.forEach((q) => set.add(q.label));
-    return Array.from(set).sort();
+    // Сортируем хронологически: Q1 2026 → Q2 2026 → Q3 2026 → Q4 2026 →
+    // Q1 2027 → ..., а не лексикографически (Q1 2026 → Q1 2027 → Q2 2026).
+    return Array.from(set).sort(compareQuarters);
   }, [dynamicQuarters]);
 
   // Дашборд по умолчанию показывает текущий активный квартал, чтобы
