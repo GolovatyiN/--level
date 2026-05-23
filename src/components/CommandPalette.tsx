@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Archive,
   ClipboardCheck,
-  Layers,
   LayoutDashboard,
   ListChecks,
   ListTodo,
@@ -126,10 +125,6 @@ export function CommandPalette({ open, onOpenChange }: Props) {
               <Target className="mr-2 h-4 w-4" />
               Цели
               <CommandShortcut>G P</CommandShortcut>
-            </CommandItem>
-            <CommandItem onSelect={() => run(() => navigate("/directions"))}>
-              <Layers className="mr-2 h-4 w-4" />
-              Отделы
             </CommandItem>
             <CommandItem onSelect={() => run(() => navigate("/archive"))}>
               <Archive className="mr-2 h-4 w-4" />

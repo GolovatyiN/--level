@@ -2,7 +2,6 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   ListChecks,
-  Layers,
   Archive,
   Plus,
   Target,
@@ -31,7 +30,6 @@ const NAV = [
   { to: "/plans", label: "Квартальные планы", icon: ClipboardCheck },
   { to: "/tasks", label: "Планы и задачи", icon: ListChecks },
   { to: "/kpi", label: "Цели", icon: Target },
-  { to: "/directions", label: "Отделы", icon: Layers },
   { to: "/archive", label: "Архив", icon: Archive },
 ];
 
@@ -77,10 +75,10 @@ export function AppLayout() {
       <div className="flex items-center justify-between px-5 py-5 lg:justify-start lg:gap-2">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground">
-            <span className="text-sm font-bold text-background">CH</span>
+            <span className="text-sm font-bold text-background">ST</span>
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold text-sidebar-foreground">Company Hub</span>
+            <span className="text-sm font-semibold text-sidebar-foreground">SEO Team Hub</span>
             <span className="text-[10px] text-muted-foreground">Дорожная карта и задачи</span>
           </div>
         </div>
@@ -217,9 +215,9 @@ export function AppLayout() {
           </Button>
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-foreground">
-              <span className="text-xs font-bold text-background">CH</span>
+              <span className="text-xs font-bold text-background">ST</span>
             </div>
-            <span className="text-sm font-semibold">Company Hub</span>
+            <span className="text-sm font-semibold">SEO Team Hub</span>
           </div>
           <Button
             type="button"

@@ -12,7 +12,6 @@ import Tasks from "./pages/Tasks.tsx";
 import Plans from "./pages/Plans.tsx";
 import PlanDetail from "./pages/PlanDetail.tsx";
 import QuarterDetail from "./pages/QuarterDetail.tsx";
-import DirectionsPage from "./pages/Directions.tsx";
 import Archive from "./pages/Archive.tsx";
 import KpiPage from "./pages/Kpi.tsx";
 import Management from "./pages/Management.tsx";
@@ -89,7 +88,10 @@ const App = () => (
                 <Route path="/kanban" element={<Tasks />} />
                 <Route path="/table" element={<Tasks />} />
                 <Route path="/kpi" element={<KpiPage />} />
-                <Route path="/directions" element={<DirectionsPage />} />
+                {/* /directions расформирован — функция отделов перенесена
+                    в раздел «Квартальные планы». Сохраняем редирект, чтобы
+                    старые закладки и уведомления продолжали работать. */}
+                <Route path="/directions" element={<Navigate to="/plans" replace />} />
                 <Route path="/archive" element={<Archive />} />
                 <Route path="/management" element={<Management />} />
                 <Route path="/profile" element={<Profile />} />

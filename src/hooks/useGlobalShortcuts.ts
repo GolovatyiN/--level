@@ -85,7 +85,6 @@ export function useGlobalShortcuts({ onOpenPalette, onNewTask }: Options) {
           k === "t" ? "/tasks" :
           k === "k" ? "/tasks?view=kanban" :
           k === "p" ? "/kpi" :
-          k === "o" ? "/directions" :
           k === "a" ? "/archive" :
           null;
         if (route) {
