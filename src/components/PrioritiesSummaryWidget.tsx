@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowDownRight, ArrowUpRight, Flame, Minus, Signal } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { useTasks, type Task } from "@/hooks/useTasks";
 import type { TaskPriority } from "@/lib/constants";
@@ -19,23 +18,23 @@ type Card = {
 const CARDS: Card[] = [
   {
     value: "critical",
-    label: "Критический",
-    description: "Срочные задачи — могут блокировать квартальные цели",
+    label: "Срочные задачи",
+    description: "Могут блокировать квартальные цели",
     cls: "border-destructive/40 bg-destructive/5 hover:border-destructive/60",
     iconCls: "text-destructive",
     Icon: Flame,
   },
   {
     value: "high",
-    label: "Высокий",
-    description: "Важные задачи — нужно завершить в ближайшее время",
+    label: "Важные задачи",
+    description: "Нужно завершить в ближайшее время",
     cls: "border-warning/40 bg-warning/5 hover:border-warning/60",
     iconCls: "text-warning",
     Icon: Signal,
   },
   {
     value: "medium",
-    label: "Средний",
+    label: "Средние задачи",
     description: "Плановая работа в обычном ритме",
     cls: "border-info/40 bg-info/5 hover:border-info/60",
     iconCls: "text-info",
@@ -43,8 +42,8 @@ const CARDS: Card[] = [
   },
   {
     value: "low",
-    label: "Низкий",
-    description: "Несрочные задачи — без жёсткого дедлайна",
+    label: "Несрочные задачи",
+    description: "Без жёсткого дедлайна",
     cls: "border-muted-foreground/30 bg-muted/30 hover:border-muted-foreground/50",
     iconCls: "text-muted-foreground",
     Icon: Signal,
@@ -61,12 +60,12 @@ interface Props {
 }
 
 /**
- * Priority workload widget. Counts active (non-archived, non-completed) tasks
- * per priority. A toggle includes completed tasks for retrospective views.
+ * Priority workload widget. Counts open tasks per priority — это значит
+ * без архивных и без задач со статусом «Завершена» или «Отменена»
+ * (виджет показывает текущую нагрузку, а не отчётность по сделанному).
  *
  * Respects the dashboard's quarter and direction scope so the numbers here
- * agree with the status cards above. Without scoping the widget would happily
- * count tasks from other quarters and confuse the user.
+ * agree with the status cards above.
  *
  * Each card is a deep link into /tasks with `?priority=...&quarter=...` so
  * the Tasks page lands on the same scope.
@@ -77,19 +76,20 @@ interface Props {
  */
 export function PrioritiesSummaryWidget({ quarter, direction }: Props = {}) {
   const { data: tasks = [] } = useTasks();
-  const [showCompleted, setShowCompleted] = useState(false);
   const navigate = useNavigate();
 
   const visible = useMemo<Task[]>(
     () =>
       tasks.filter((t) => {
         if (t.archived) return false;
-        if (!showCompleted && t.status === "completed") return false;
+        // Завершённые и отменённые считаем «закрытыми» — они не должны
+        // светиться в счётчике текущей нагрузки.
+        if (t.status === "completed" || t.status === "cancelled") return false;
         if (quarter && quarter !== "all" && t.quarter !== quarter) return false;
         if (direction && direction !== "all" && t.direction_id !== direction) return false;
         return true;
       }),
-    [tasks, showCompleted, quarter, direction],
+    [tasks, quarter, direction],
   );
 
   // Pre-compute counts and weekly deltas in one pass.
@@ -114,7 +114,9 @@ export function PrioritiesSummaryWidget({ quarter, direction }: Props = {}) {
   }, [visible]);
 
   const goToList = (priority: TaskPriority) => {
-    const params = new URLSearchParams({ priority, status: showCompleted ? "all" : "active" });
+    // Виджет считает только незакрытые задачи, поэтому и на странице
+    // /tasks хочется landing'а в тот же скоуп.
+    const params = new URLSearchParams({ priority, status: "active" });
     if (quarter && quarter !== "all") params.set("quarter", quarter);
     if (direction && direction !== "all") params.set("direction", direction);
     navigate(`/tasks?${params.toString()}`);
@@ -122,17 +124,7 @@ export function PrioritiesSummaryWidget({ quarter, direction }: Props = {}) {
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-muted-foreground">По приоритетам</h2>
-        <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-          <Switch
-            checked={showCompleted}
-            onCheckedChange={setShowCompleted}
-            aria-label="Показывать завершённые задачи"
-          />
-          <span>Показывать завершённые</span>
-        </label>
-      </div>
+      <h2 className="text-sm font-semibold text-muted-foreground">По приоритетам</h2>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {CARDS.map((c, idx) => {
