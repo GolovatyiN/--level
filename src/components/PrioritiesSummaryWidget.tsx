@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 type Card = {
   value: TaskPriority;
   label: string;
-  description: string;
   cls: string;
   iconCls: string;
   Icon: React.ComponentType<{ className?: string }>;
@@ -19,7 +18,6 @@ const CARDS: Card[] = [
   {
     value: "critical",
     label: "Срочные задачи",
-    description: "Могут блокировать квартальные цели",
     cls: "border-destructive/40 bg-destructive/5 hover:border-destructive/60",
     iconCls: "text-destructive",
     Icon: Flame,
@@ -27,7 +25,6 @@ const CARDS: Card[] = [
   {
     value: "high",
     label: "Важные задачи",
-    description: "Нужно завершить в ближайшее время",
     cls: "border-warning/40 bg-warning/5 hover:border-warning/60",
     iconCls: "text-warning",
     Icon: Signal,
@@ -35,7 +32,6 @@ const CARDS: Card[] = [
   {
     value: "medium",
     label: "Средние задачи",
-    description: "Плановая работа в обычном ритме",
     cls: "border-info/40 bg-info/5 hover:border-info/60",
     iconCls: "text-info",
     Icon: Signal,
@@ -43,7 +39,6 @@ const CARDS: Card[] = [
   {
     value: "low",
     label: "Несрочные задачи",
-    description: "Без жёсткого дедлайна",
     cls: "border-muted-foreground/30 bg-muted/30 hover:border-muted-foreground/50",
     iconCls: "text-muted-foreground",
     Icon: Signal,
@@ -137,9 +132,6 @@ export function PrioritiesSummaryWidget({ quarter, direction }: Props = {}) {
               <div className={cn("text-3xl font-semibold tabular-nums", c.iconCls)}>
                 <AnimatedNumber value={total} duration={500} />
               </div>
-              <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
-                {c.description}
-              </p>
             </button>
           );
         })}
