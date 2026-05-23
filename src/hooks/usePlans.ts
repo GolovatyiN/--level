@@ -75,9 +75,34 @@ export type DepartmentPlan = {
   approved_by: string | null;
   approved_at: string | null;
   submitted_at: string | null;
+  /**
+   * Восемь полей «Итогов» квартала. Добавлены миграцией
+   * 20260512100000_task_remarks_and_revision_status.
+   */
+  outcome_planned: string | null;
+  outcome_done: string | null;
+  outcome_not_done: string | null;
+  outcome_not_done_reason: string | null;
+  outcome_achievements: string | null;
+  outcome_problems: string | null;
+  outcome_conclusions: string | null;
+  outcome_next_quarter: string | null;
   created_at: string;
   updated_at: string;
 };
+
+/** Ключи полей «Итогов» — для итерации в UI. */
+export const PLAN_OUTCOME_FIELDS = [
+  { key: "outcome_planned",         label: "Что было запланировано" },
+  { key: "outcome_done",            label: "Что выполнено" },
+  { key: "outcome_not_done",        label: "Что не выполнено" },
+  { key: "outcome_not_done_reason", label: "Причины невыполнения" },
+  { key: "outcome_achievements",    label: "Основные достижения" },
+  { key: "outcome_problems",        label: "Проблемы квартала" },
+  { key: "outcome_conclusions",     label: "Выводы" },
+  { key: "outcome_next_quarter",    label: "План действий на следующий квартал" },
+] as const;
+export type PlanOutcomeField = (typeof PLAN_OUTCOME_FIELDS)[number]["key"];
 
 export type DepartmentPlanStats = {
   plan_id: string;
@@ -229,6 +254,36 @@ export function useCreatePlan() {
  * `changes_requested` or `final_review`, a comment is required and stored
  * alongside the status flip in `department_plan_comments`.
  */
+/**
+ * Save the eight «Итоги» fields на плане. Поддерживает частичный
+ * patch — обновляются только переданные ключи. На успех инвалидирует
+ * запрос конкретного плана + общий список.
+ */
+export function useUpdatePlanOutcomes() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      plan_id,
+      patch,
+    }: {
+      plan_id: string;
+      patch: Partial<Record<PlanOutcomeField, string | null>>;
+    }) => {
+      const { error } = await supabase
+        .from("department_plans" as any)
+        .update(patch as any)
+        .eq("id", plan_id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["plan", vars.plan_id] });
+      qc.invalidateQueries({ queryKey: ["plans"] });
+      toast.success("Итоги сохранены");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Не удалось сохранить итоги"),
+  });
+}
+
 export function useUpdatePlanStatus() {
   const qc = useQueryClient();
   return useMutation({
