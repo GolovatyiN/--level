@@ -21,10 +21,12 @@ import {
   useDepartmentAccess,
   useManagementUsers,
   useSetUserActive,
+  useSetUserDepartmentHeads,
   useSetUserRole,
 } from "@/hooks/useManagement";
 import { useDeleteAdminUser } from "@/hooks/useAdminUsers";
 import { Spinner } from "@/components/UiState";
+import { MultiSelectPopover, type MultiSelectOption } from "@/components/MultiSelectPopover";
 import { RoleBadge } from "./RoleBadge";
 import { UserAccessEditor } from "./UserAccessEditor";
 import { InviteUserDialog } from "./InviteUserDialog";
@@ -60,6 +62,7 @@ export function ManagementUsersTab() {
   const { data: access = [] } = useDepartmentAccess();
   const setRole = useSetUserRole();
   const setActive = useSetUserActive();
+  const setHeads = useSetUserDepartmentHeads();
   const del = useDeleteAdminUser();
 
   const [search, setSearch] = useState("");
@@ -82,6 +85,35 @@ export function ManagementUsersTab() {
     });
     return m;
   }, [access, directions]);
+
+  // Какими отделами руководит каждый пользователь. Один человек может
+  // возглавлять сразу несколько отделов — модели данных это уже
+  // позволяет (UNIQUE-констрейнта на `directions.head_user_id` нет).
+  const headsByUser = useMemo(() => {
+    const m = new Map<string, string[]>();
+    directions.forEach((d) => {
+      if (!d.head_user_id) return;
+      const arr = m.get(d.head_user_id) ?? [];
+      arr.push(d.id);
+      m.set(d.head_user_id, arr);
+    });
+    return m;
+  }, [directions]);
+
+  const directionOptions: MultiSelectOption[] = useMemo(
+    () =>
+      directions.map((d) => ({
+        value: d.id,
+        label: d.name,
+        colorHex: d.color,
+      })),
+    [directions],
+  );
+
+  const dirNameById = useMemo(
+    () => new Map(directions.map((d) => [d.id, d])),
+    [directions],
+  );
 
   const list = useMemo(() => {
     let r = users.filter((u) => {
@@ -180,7 +212,8 @@ export function ManagementUsersTab() {
               <tr>
                 <th className="px-4 py-2.5 font-medium">Пользователь</th>
                 <th className="px-4 py-2.5 font-medium">Роль</th>
-                <th className="px-4 py-2.5 font-medium">Отделы</th>
+                <th className="px-4 py-2.5 font-medium">Доступ к отделам</th>
+                <th className="px-4 py-2.5 font-medium">Руководит</th>
                 <th className="px-4 py-2.5 font-medium">Статус</th>
                 <th className="px-4 py-2.5 font-medium">Регистрация</th>
                 <th className="px-4 py-2.5 font-medium">Последняя активность</th>
@@ -189,10 +222,10 @@ export function ManagementUsersTab() {
             </thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={7} className="py-10 text-center"><Spinner /> </td></tr>
+                <tr><td colSpan={8} className="py-10 text-center"><Spinner /> </td></tr>
               )}
               {!isLoading && list.length === 0 && (
-                <tr><td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">Пользователи не найдены</td></tr>
+                <tr><td colSpan={8} className="py-10 text-center text-sm text-muted-foreground">Пользователи не найдены</td></tr>
               )}
               {list.map((u) => {
                 const isMe = u.user_id === user?.id;
@@ -241,6 +274,47 @@ export function ManagementUsersTab() {
                           ))}
                           {userDepts.length > 3 && (
                             <span className="text-[10px] text-muted-foreground">+{userDepts.length - 3}</span>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {/* Multi-select «Руководит». Один человек может
+                          быть head'ом нескольких отделов. Под капотом —
+                          батч UPDATE на directions через
+                          useSetUserDepartmentHeads. */}
+                      <MultiSelectPopover
+                        placeholder="—"
+                        options={directionOptions}
+                        selected={headsByUser.get(u.user_id) ?? []}
+                        onChange={(next) =>
+                          setHeads.mutate({ user_id: u.user_id, direction_ids: next })
+                        }
+                        searchable
+                        triggerClassName="min-w-[180px]"
+                      />
+                      {(headsByUser.get(u.user_id) ?? []).length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {(headsByUser.get(u.user_id) ?? []).slice(0, 3).map((id) => {
+                            const d = dirNameById.get(id);
+                            if (!d) return null;
+                            return (
+                              <span
+                                key={id}
+                                className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground"
+                              >
+                                <span
+                                  className="h-1.5 w-1.5 rounded-full"
+                                  style={{ backgroundColor: d.color }}
+                                />
+                                {d.name}
+                              </span>
+                            );
+                          })}
+                          {(headsByUser.get(u.user_id) ?? []).length > 3 && (
+                            <span className="text-[10px] text-muted-foreground">
+                              +{(headsByUser.get(u.user_id) ?? []).length - 3}
+                            </span>
                           )}
                         </div>
                       )}

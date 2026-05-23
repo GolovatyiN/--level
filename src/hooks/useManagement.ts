@@ -224,6 +224,63 @@ export function useSetDepartmentAccess() {
 // Department head
 // ---------------------------------------------------------------------------
 
+/**
+ * Назначает одному пользователю заведование набором отделов.
+ *
+ * Один человек может быть head'ом нескольких отделов одновременно
+ * (data model уже это позволяет — у `directions.head_user_id` нет
+ * UNIQUE-констрейнта). Этот хук работает с user-centric точки зрения:
+ * выбираешь юзера → отмечаешь чекбоксами все отделы, которыми он
+ * руководит.
+ *
+ * Diff-логика:
+ *   • прошлые: directions, где `head_user_id == user_id`
+ *   • новые: переданный direction_ids
+ *   • для отделов, что были, но больше не выбраны → set head_user_id = null
+ *   • для новых, но ещё не назначенных → set head_user_id = user_id
+ *   • те, что и были и остались, не трогаем (не сбиваем updated_at)
+ */
+export function useSetUserDepartmentHeads() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      user_id,
+      direction_ids,
+    }: {
+      user_id: string;
+      direction_ids: string[];
+    }) => {
+      // Тянем актуальный список отделов одного запроса.
+      const { data: dirs, error: readErr } = await supabase
+        .from("directions")
+        .select("id, head_user_id");
+      if (readErr) throw readErr;
+
+      const currentlyManaged = (dirs ?? [])
+        .filter((d: any) => d.head_user_id === user_id)
+        .map((d: any) => d.id as string);
+      const nextSet = new Set(direction_ids);
+      const toClear = currentlyManaged.filter((id) => !nextSet.has(id));
+      const toAssign = direction_ids.filter((id) => !currentlyManaged.includes(id));
+
+      await Promise.all([
+        ...toClear.map((id) =>
+          supabase.from("directions").update({ head_user_id: null } as any).eq("id", id),
+        ),
+        ...toAssign.map((id) =>
+          supabase.from("directions").update({ head_user_id: user_id } as any).eq("id", id),
+        ),
+      ]);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["directions"] });
+      qc.invalidateQueries({ queryKey: ["audit_log"] });
+      toast.success("Руководство отделами обновлено");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Не удалось обновить"),
+  });
+}
+
 export function useSetDepartmentHead() {
   const qc = useQueryClient();
   return useMutation({
