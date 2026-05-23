@@ -34,10 +34,13 @@ import { cn } from "@/lib/utils";
 
 const ICONS: Record<NotificationType, React.ComponentType<{ className?: string }>> = {
   task_assigned: ListTodo,
-  kpi_assigned: Target,
-  kpi_mention: MessageSquare,
-  kpi_progress: Target,
-  kpi_comment: MessageSquare,
+  // KPI и /tasks больше нет в системе, но энумы в БД и старые
+  // уведомления остаются. Чтобы не падать на отсутствующих иконках,
+  // отдаём дефолтные glyphs. Линки тоже редиректим на /plans.
+  kpi_assigned:           Target,
+  kpi_mention:            MessageSquare,
+  kpi_progress:           Target,
+  kpi_comment:            MessageSquare,
   plan_on_review:         Send,
   plan_approved:          ShieldCheck,
   plan_changes_requested: RefreshCcw,
@@ -48,9 +51,10 @@ const ICONS: Record<NotificationType, React.ComponentType<{ className?: string }
 };
 
 function entityLink(n: Notification): string | null {
-  if (n.entity_type === "task") return `/tasks?task=${n.entity_id}`;
-  if (n.entity_type === "kpi") return `/kpi?kpi=${n.entity_id}`;
-  if (n.entity_type === "kpi_comment") return `/kpi`;
+  // task и kpi-страниц больше нет — нет смысла строить глубокие
+  // линки на задачу/цель. Ведём пользователя в общий список планов.
+  if (n.entity_type === "task") return `/plans`;
+  if (n.entity_type === "kpi" || n.entity_type === "kpi_comment") return `/plans`;
   if (n.entity_type === "department_plan") return `/plans/${n.entity_id}`;
   return null;
 }

@@ -60,8 +60,9 @@ interface Props {
  * Respects the dashboard's quarter and direction scope so the numbers here
  * agree with the status cards above.
  *
- * Each card is a deep link into /tasks with `?priority=...&quarter=...` so
- * the Tasks page lands on the same scope.
+ * Each card linked to /tasks ранее — теперь страница задач удалена,
+ * клик просто ведёт в раздел «Квартальные планы». Глубокий фильтр по
+ * приоритету можно вернуть, если появится глобальный task-table.
  *
  * The "weekly delta" is the count of tasks of this priority created in the
  * last 7 days minus those created the 7 days before — a simple "is workload
@@ -95,13 +96,9 @@ export function PrioritiesSummaryWidget({ quarter, direction }: Props = {}) {
     return map;
   }, [visible]);
 
-  const goToList = (priority: TaskPriority) => {
-    // Виджет считает только незакрытые задачи, поэтому и на странице
-    // /tasks хочется landing'а в тот же скоуп.
-    const params = new URLSearchParams({ priority, status: "active" });
-    if (quarter && quarter !== "all") params.set("quarter", quarter);
-    if (direction && direction !== "all") params.set("direction", direction);
-    navigate(`/tasks?${params.toString()}`);
+  const goToList = (_priority: TaskPriority) => {
+    // Глобальной страницы задач больше нет — ведём в матрицу планов.
+    navigate("/plans");
   };
 
   return (

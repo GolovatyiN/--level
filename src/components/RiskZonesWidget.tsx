@@ -55,7 +55,7 @@ export function RiskZonesWidget() {
           icon: AlertCircle,
           iconCls: "text-destructive",
           title: `${d.name}: ${n} ${plural(n, "просроченная задача", "просроченные задачи", "просроченных задач")}`,
-          href: `/tasks?direction=${dirId}&status=overdue`,
+          href: `/plans`,
         });
       });
 
@@ -80,7 +80,7 @@ export function RiskZonesWidget() {
           icon: Flame,
           iconCls: "text-destructive",
           title: `${d.name}: ${n} ${plural(n, "критическая задача", "критические задачи", "критических задач")}`,
-          href: `/tasks?direction=${dirId}&priority=critical`,
+          href: `/plans`,
         });
       });
 

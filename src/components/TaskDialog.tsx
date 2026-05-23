@@ -20,9 +20,6 @@ import { Task, useCreateTask, useDeleteTask, useUpdateTask, useTaskHistory } fro
 import { PRIORITIES, STATUSES, currentQuarter } from "@/lib/constants";
 import { format, parseISO } from "date-fns";
 import { Trash2, Archive, ArchiveRestore, History, Loader2 } from "lucide-react";
-import { useKpis } from "@/hooks/useKpis";
-import { useTaskKpiLinks, useLinkKpiTask, useUnlinkKpiTask, useUpdateKpiTaskLink } from "@/hooks/useKpiActivity";
-import { Target, Plus } from "lucide-react";
 import { useQuarters, useCreateQuarter, useDeleteQuarter } from "@/hooks/useTaxonomies";
 import { EditableSelect } from "@/components/EditableSelect";
 import { UserPicker } from "@/components/UserPicker";
@@ -40,18 +37,9 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
   const update = useUpdateTask();
   const del = useDeleteTask();
   const { data: history = [] } = useTaskHistory(task?.id ?? null);
-  const { data: kpis = [] } = useKpis();
-  const { data: links = [] } = useTaskKpiLinks(task?.id ?? null);
-  const linkKpi = useLinkKpiTask();
-  const unlinkKpi = useUnlinkKpiTask();
-  const updateLink = useUpdateKpiTaskLink();
   const { data: quarters = [] } = useQuarters();
   const createQuarter = useCreateQuarter();
   const deleteQuarter = useDeleteQuarter();
-  const [newKpiId, setNewKpiId] = useState<string>("");
-  const [newContribution, setNewContribution] = useState<string>("1");
-  // Draft state for "create" mode (no task.id yet)
-  const [draftLinks, setDraftLinks] = useState<{ kpi_id: string; contribution: number }[]>([]);
 
   const [form, setForm] = useState<Partial<Task>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -72,9 +60,6 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
           ...defaults,
         }
       );
-      setDraftLinks([]);
-      setNewKpiId("");
-      setNewContribution("1");
       setConfirmDelete(false);
     }
   }, [open, task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -83,34 +68,10 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
 
   const submit = async () => {
     if (!form.title?.trim()) return;
-    // If the user typed a KPI link but didn't click "+", treat it as part of
-    // their changes and persist it too. Same idea: "Сохранить" should commit
-    // everything they touched in this dialog.
-    const pendingLink = newKpiId
-      ? { kpi_id: newKpiId, contribution: parseFloat(newContribution) || 0 }
-      : null;
-
     if (task) {
       await update.mutateAsync({ id: task.id, patch: form, prev: task });
-      if (pendingLink) {
-        await linkKpi
-          .mutateAsync({ kpi_id: pendingLink.kpi_id, task_id: task.id, contribution: pendingLink.contribution })
-          .catch(() => {});
-      }
     } else {
-      const created: any = await create.mutateAsync(form as any);
-      const newId: string | undefined = created?.id ?? created?.[0]?.id;
-      if (newId) {
-        const linksToPersist = pendingLink ? [...draftLinks, pendingLink] : draftLinks;
-        // Buffered KPI links. Individual failures surface via the hook's
-        // onError toast — don't let one failure keep the dialog stuck open
-        // with a phantom "unsaved" task that's actually already created.
-        await Promise.allSettled(
-          linksToPersist.map((l) =>
-            linkKpi.mutateAsync({ kpi_id: l.kpi_id, task_id: newId, contribution: l.contribution }),
-          ),
-        );
-      }
+      await create.mutateAsync(form as any);
     }
     onOpenChange(false);
   };
@@ -130,23 +91,6 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
 
   const isSaving = create.isPending || update.isPending;
   const isDeleting = del.isPending;
-
-  const linkedKpiIds = new Set(
-    task ? links.map((l) => l.kpi_id) : draftLinks.map((l) => l.kpi_id)
-  );
-  const availableKpis = kpis.filter((k) => !linkedKpiIds.has(k.id));
-  const addLink = async () => {
-    if (!newKpiId) return;
-    const c = parseFloat(newContribution);
-    if (isNaN(c)) return;
-    if (task) {
-      await linkKpi.mutateAsync({ kpi_id: newKpiId, task_id: task.id, contribution: c });
-    } else {
-      setDraftLinks((prev) => [...prev, { kpi_id: newKpiId, contribution: c }]);
-    }
-    setNewKpiId("");
-    setNewContribution("1");
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -306,106 +250,6 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
             <p className="text-[11px] text-muted-foreground">
               Свободный текст. Сохраняется только в этой задаче — не попадает
               в общий справочник.
-            </p>
-          </div>
-
-          <div className="rounded-md border border-border bg-muted/30 p-3">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-              <Target className="h-3.5 w-3.5" /> Связанные цели
-            </div>
-            {task ? (
-              links.length > 0 && (
-                <ul className="mb-2 space-y-1.5">
-                  {links.map((l) => {
-                    const k = kpis.find((x) => x.id === l.kpi_id);
-                    return (
-                      <li key={l.id} className="flex items-center gap-2 rounded bg-card px-2 py-1.5 text-xs">
-                        <span className="flex-1 truncate font-medium">{k?.name ?? "—"}</span>
-                        <span className="text-muted-foreground">вклад:</span>
-                        <Input
-                          type="number"
-                          defaultValue={l.contribution}
-                          className="h-6 w-20 text-xs"
-                          onBlur={(e) => {
-                            const v = parseFloat(e.target.value);
-                            if (!isNaN(v) && v !== l.contribution) {
-                              updateLink.mutate({ id: l.id, contribution: v, kpi_id: l.kpi_id });
-                            }
-                          }}
-                        />
-                        <span className="text-muted-foreground">{k?.unit}</span>
-                        <button
-                          type="button"
-                          onClick={() => unlinkKpi.mutate({ id: l.id, kpi_id: l.kpi_id, task_id: task.id })}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )
-            ) : (
-              draftLinks.length > 0 && (
-                <ul className="mb-2 space-y-1.5">
-                  {draftLinks.map((l, idx) => {
-                    const k = kpis.find((x) => x.id === l.kpi_id);
-                    return (
-                      <li key={idx} className="flex items-center gap-2 rounded bg-card px-2 py-1.5 text-xs">
-                        <span className="flex-1 truncate font-medium">{k?.name ?? "—"}</span>
-                        <span className="text-muted-foreground">вклад:</span>
-                        <Input
-                          type="number"
-                          defaultValue={l.contribution}
-                          className="h-6 w-20 text-xs"
-                          onBlur={(e) => {
-                            const v = parseFloat(e.target.value);
-                            if (!isNaN(v)) {
-                              setDraftLinks((prev) => prev.map((x, i) => (i === idx ? { ...x, contribution: v } : x)));
-                            }
-                          }}
-                        />
-                        <span className="text-muted-foreground">{k?.unit}</span>
-                        <button
-                          type="button"
-                          onClick={() => setDraftLinks((prev) => prev.filter((_, i) => i !== idx))}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )
-            )}
-            {availableKpis.length > 0 ? (
-              <div className="flex items-center gap-2">
-                <Select value={newKpiId} onValueChange={setNewKpiId}>
-                  <SelectTrigger className="h-7 flex-1 text-xs"><SelectValue placeholder="+ привязать цель" /></SelectTrigger>
-                  <SelectContent>
-                    {availableKpis.map((k) => (
-                      <SelectItem key={k.id} value={k.id}>{k.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="number"
-                  value={newContribution}
-                  onChange={(e) => setNewContribution(e.target.value)}
-                  className="h-7 w-20 text-xs"
-                  placeholder="вклад"
-                />
-                <Button type="button" size="sm" variant="outline" className="h-7" onClick={addLink} disabled={!newKpiId}>
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">Все KPI уже привязаны.</p>
-            )}
-            <p className="mt-2 text-xs text-muted-foreground">
-              Когда статус задачи станет «Завершено», вклад автоматически прибавится к факту цели.
             </p>
           </div>
 

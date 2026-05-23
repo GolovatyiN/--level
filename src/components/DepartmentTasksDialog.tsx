@@ -260,7 +260,7 @@ export function DepartmentTasksDialog({ open, onOpenChange, direction }: Props) 
               size="sm"
               onClick={() => {
                 onOpenChange(false);
-                navigate(`/tasks?direction=${direction.id}`);
+                navigate("/plans");
               }}
             >
               Открыть в разделе «Планы и задачи»
