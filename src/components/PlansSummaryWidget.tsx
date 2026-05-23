@@ -11,81 +11,127 @@ import {
 } from "lucide-react";
 import { useDirections } from "@/hooks/useDirections";
 import { useQuarters } from "@/hooks/useTaxonomies";
-import { usePlans, usePlanStats, type PlanStatus } from "@/hooks/usePlans";
+import { usePlans, type PlanStatus } from "@/hooks/usePlans";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
-import { currentQuarter } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
+interface Props {
+  /**
+   * Quarter selected on the dashboard. Когда выбран конкретный квартал
+   * (например, «Q2 2026») — статистика считается только по нему.
+   * Когда не передан или === "all", агрегируем по всем кварталам.
+   *
+   * NB: direction-фильтр дашборда виджет намеренно игнорирует —
+   * по ТЗ блок «Квартальные планы» показывает картину **по всем отделам**.
+   */
+  quarter?: string;
+}
+
 /**
- * Aggregated quarterly-plans status block for the dashboard. Counts plans
- * grouped by lifecycle bucket and surfaces the two most actionable lists:
- * departments without a plan for the current quarter, and plans currently
- * waiting for approval.
+ * Сводка квартальных планов по всем отделам.
+ *
+ * Карточки:
+ *   • Бэклог            — отделы без плана на выбранный квартал.
+ *   • В процессе        — планы со статусом `draft`.
+ *   • На согласовании   — статус `on_review`.
+ *   • Нужны правки      — статус `changes_requested`.
+ *   • Готов             — статус `approved` плюс пост-апрувные `in_progress`,
+ *                          `at_risk`, `blocked` (план уже одобрен и идёт).
+ *   • Завершён          — статус `completed`.
+ *
+ * Средний прогресс = (готовые планы) / (всего планов/отделов) × 100,
+ * где «готовые» = карточки «Готов» + «Завершён».
+ *
+ * Ниже карточек — два actionable-списка: планы на согласовании и планы,
+ * по которым запрошены правки. Пустое состояние показываем явно.
  */
-export function PlansSummaryWidget() {
+const TONE_CLS = {
+  neutral: "text-muted-foreground",
+  info: "text-info",
+  warning: "text-warning",
+  success: "text-success",
+  destructive: "text-destructive",
+} as const;
+
+// Статусы, которые «обёрнуты» в карточку «Готов» — план одобрен и идёт.
+const READY_STATUSES: PlanStatus[] = ["approved", "in_progress", "at_risk", "blocked"];
+
+export function PlansSummaryWidget({ quarter }: Props = {}) {
   const { data: directions = [] } = useDirections();
   const { data: quarters = [] } = useQuarters();
   const { data: plans = [] } = usePlans();
-  const { data: stats = [] } = usePlanStats();
   const navigate = useNavigate();
 
-  const currentQ = quarters.find((q) => q.label === currentQuarter()) ?? null;
+  // 1. Сужаем по выбранному кварталу (если выбран).
+  const scopedPlans = useMemo(() => {
+    if (!quarter || quarter === "all") return plans;
+    const q = quarters.find((qq) => qq.label === quarter);
+    if (!q) return [] as typeof plans;
+    return plans.filter((p) => p.quarter_id === q.id);
+  }, [plans, quarter, quarters]);
 
-  // Counts per status bucket. "Бэклог" = synthetic count of (department,
-  // quarter) pairs that don't have a row yet, scoped to visible quarters.
+  // 2. Общее число «слотов» = отделы × кварталы (или просто отделы,
+  // если выбран конкретный квартал). Это число, к которому будут
+  // суммироваться все карточки, чтобы (Готов + Завершён) / total
+  // дал понятный процент готовности.
+  const totalSlots = useMemo(() => {
+    if (!quarter || quarter === "all") return directions.length * quarters.length;
+    return directions.length;
+  }, [directions, quarters, quarter]);
+
+  // 3. Считаем по статусам.
   const counts = useMemo(() => {
-    const byStatus: Partial<Record<PlanStatus, number>> = {};
-    plans.forEach((p) => {
-      byStatus[p.status] = (byStatus[p.status] ?? 0) + 1;
+    const acc = { draft: 0, on_review: 0, changes_requested: 0, ready: 0, completed: 0 };
+    scopedPlans.forEach((p) => {
+      if (p.status === "archived") return; // архив не учитываем
+      if (p.status === "draft") acc.draft += 1;
+      else if (p.status === "on_review") acc.on_review += 1;
+      else if (p.status === "changes_requested") acc.changes_requested += 1;
+      else if (p.status === "completed") acc.completed += 1;
+      else if (READY_STATUSES.includes(p.status)) acc.ready += 1;
     });
-    const cells = directions.length * quarters.length;
-    const backlog = Math.max(0, cells - plans.length);
-    return { ...byStatus, backlog } as Record<PlanStatus | "backlog", number>;
-  }, [plans, directions, quarters]);
+    const knownPlans = acc.draft + acc.on_review + acc.changes_requested + acc.ready + acc.completed;
+    const backlog = Math.max(0, totalSlots - knownPlans);
+    return { ...acc, backlog };
+  }, [scopedPlans, totalSlots]);
 
-  const avgProgress = useMemo(() => {
-    if (stats.length === 0) return 0;
-    const sum = stats.reduce((acc, s) => acc + (s.progress_pct ?? 0), 0);
-    return Math.round(sum / stats.length);
-  }, [stats]);
+  // 4. Готовые = Готов + Завершён. Делим на общее число слотов.
+  const readyCount = counts.ready + counts.completed;
+  const avgProgress = totalSlots > 0 ? Math.round((readyCount / totalSlots) * 100) : 0;
 
-  // Departments with no plan for the current quarter — actionable list.
-  const missingForCurrent = useMemo(() => {
-    if (!currentQ) return [];
-    const existing = new Set(
-      plans.filter((p) => p.quarter_id === currentQ.id).map((p) => p.direction_id),
-    );
-    return directions.filter((d) => !existing.has(d.id));
-  }, [directions, plans, currentQ]);
-
-  const awaitingReview = useMemo(
+  // 5. Actionable-списки.
+  const onReview = useMemo(
     () =>
-      plans
+      scopedPlans
         .filter((p) => p.status === "on_review")
         .map((p) => ({
           plan: p,
           dir: directions.find((d) => d.id === p.direction_id),
-          q: quarters.find((q) => q.id === p.quarter_id),
+          q: quarters.find((qq) => qq.id === p.quarter_id),
         })),
-    [plans, directions, quarters],
+    [scopedPlans, directions, quarters],
+  );
+
+  const changesRequested = useMemo(
+    () =>
+      scopedPlans
+        .filter((p) => p.status === "changes_requested")
+        .map((p) => ({
+          plan: p,
+          dir: directions.find((d) => d.id === p.direction_id),
+          q: quarters.find((qq) => qq.id === p.quarter_id),
+        })),
+    [scopedPlans, directions, quarters],
   );
 
   const cards = [
-    { key: "backlog",            label: "Бэклог",         value: counts.backlog,            icon: CircleDashed, tone: "neutral"  as const },
-    { key: "draft",              label: "В процессе",     value: counts.draft ?? 0,         icon: CircleDot,    tone: "info"     as const },
-    { key: "on_review",          label: "На согласовании",value: counts.on_review ?? 0,     icon: Send,         tone: "warning"  as const },
-    { key: "changes_requested",  label: "Нужны правки",   value: counts.changes_requested ?? 0, icon: RefreshCcw, tone: "destructive" as const },
-    { key: "approved",           label: "Готов",          value: counts.approved ?? 0,      icon: ShieldCheck,  tone: "success"  as const },
-    { key: "completed",          label: "Завершён",       value: counts.completed ?? 0,     icon: CheckCircle2, tone: "success"  as const },
+    { key: "backlog",           label: "Бэклог",          value: counts.backlog,           icon: CircleDashed, tone: "neutral"     as const },
+    { key: "draft",             label: "В процессе",      value: counts.draft,             icon: CircleDot,    tone: "info"        as const },
+    { key: "on_review",         label: "На согласовании", value: counts.on_review,         icon: Send,         tone: "warning"     as const },
+    { key: "changes_requested", label: "Нужны правки",    value: counts.changes_requested, icon: RefreshCcw,   tone: "destructive" as const },
+    { key: "approved",          label: "Готов",           value: counts.ready,             icon: ShieldCheck,  tone: "success"     as const },
+    { key: "completed",         label: "Завершён",        value: counts.completed,         icon: CheckCircle2, tone: "success"     as const },
   ];
-
-  const TONE_CLS = {
-    neutral:     "text-muted-foreground",
-    info:        "text-info",
-    warning:     "text-warning",
-    success:     "text-success",
-    destructive: "text-destructive",
-  } as const;
 
   return (
     <section className="space-y-3">
@@ -144,37 +190,19 @@ export function PlansSummaryWidget() {
         </button>
       </div>
 
-      {(missingForCurrent.length > 0 || awaitingReview.length > 0) && (
+      {onReview.length === 0 && changesRequested.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border bg-card/40 p-4 text-center text-xs text-muted-foreground">
+          Нет планов, требующих внимания
+        </div>
+      ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {currentQ && missingForCurrent.length > 0 && (
-            <div className="rounded-xl border border-dashed border-border bg-card/40 p-4">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
-                Без плана на текущий квартал
-              </p>
-              <ul className="flex flex-wrap gap-1.5">
-                {missingForCurrent.map((d) => (
-                  <li key={d.id}>
-                    <button
-                      type="button"
-                      onClick={() => navigate("/plans")}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted-foreground/20"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: d.color }} />
-                      {d.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {awaitingReview.length > 0 && (
+          {onReview.length > 0 && (
             <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
               <p className="mb-2 text-xs font-medium text-warning">
-                Ожидают согласования ({awaitingReview.length})
+                Ожидают согласования ({onReview.length})
               </p>
               <ul className="space-y-1.5">
-                {awaitingReview.slice(0, 6).map(({ plan, dir, q }) => (
+                {onReview.slice(0, 6).map(({ plan, dir, q }) => (
                   <li key={plan.id}>
                     <button
                       type="button"
@@ -187,8 +215,34 @@ export function PlansSummaryWidget() {
                     </button>
                   </li>
                 ))}
-                {awaitingReview.length > 6 && (
-                  <li className="text-[10px] text-muted-foreground">+{awaitingReview.length - 6}</li>
+                {onReview.length > 6 && (
+                  <li className="text-[10px] text-muted-foreground">+{onReview.length - 6}</li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {changesRequested.length > 0 && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+              <p className="mb-2 text-xs font-medium text-destructive">
+                Нужны правки ({changesRequested.length})
+              </p>
+              <ul className="space-y-1.5">
+                {changesRequested.slice(0, 6).map(({ plan, dir, q }) => (
+                  <li key={plan.id}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/plans/${plan.id}`)}
+                      className="flex w-full items-center gap-2 rounded text-left text-xs transition-colors hover:text-foreground"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: dir?.color ?? "#888" }} />
+                      <span className="font-medium">{dir?.name ?? "—"}</span>
+                      <span className="text-muted-foreground">— {q?.label ?? "—"}</span>
+                    </button>
+                  </li>
+                ))}
+                {changesRequested.length > 6 && (
+                  <li className="text-[10px] text-muted-foreground">+{changesRequested.length - 6}</li>
                 )}
               </ul>
             </div>
