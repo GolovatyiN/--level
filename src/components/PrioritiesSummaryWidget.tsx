@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowDownRight, ArrowUpRight, Flame, Minus, Signal } from "lucide-react";
+import { Flame, Signal } from "lucide-react";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { useTasks, type Task } from "@/hooks/useTasks";
 import type { TaskPriority } from "@/lib/constants";
@@ -50,8 +50,6 @@ const CARDS: Card[] = [
   },
 ];
 
-const DAYS_7 = 7 * 24 * 60 * 60 * 1000;
-
 interface Props {
   /** Optional quarter scope — narrows counts to this quarter only. */
   quarter?: string;
@@ -92,24 +90,13 @@ export function PrioritiesSummaryWidget({ quarter, direction }: Props = {}) {
     [tasks, quarter, direction],
   );
 
-  // Pre-compute counts and weekly deltas in one pass.
-  const stats = useMemo(() => {
-    const now = Date.now();
-    const map = new Map<TaskPriority, { total: number; thisWeek: number; lastWeek: number }>();
-    CARDS.forEach((c) => map.set(c.value, { total: 0, thisWeek: 0, lastWeek: 0 }));
-
+  // Pre-compute counts per priority in one pass.
+  const counts = useMemo(() => {
+    const map = new Map<TaskPriority, number>();
+    CARDS.forEach((c) => map.set(c.value, 0));
     visible.forEach((t) => {
-      const e = map.get(t.priority);
-      if (!e) return;
-      e.total += 1;
-      const created = Date.parse(t.created_at);
-      if (Number.isFinite(created)) {
-        const age = now - created;
-        if (age <= DAYS_7) e.thisWeek += 1;
-        else if (age <= 2 * DAYS_7) e.lastWeek += 1;
-      }
+      map.set(t.priority, (map.get(t.priority) ?? 0) + 1);
     });
-
     return map;
   }, [visible]);
 
@@ -128,8 +115,7 @@ export function PrioritiesSummaryWidget({ quarter, direction }: Props = {}) {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {CARDS.map((c, idx) => {
-          const s = stats.get(c.value) ?? { total: 0, thisWeek: 0, lastWeek: 0 };
-          const delta = s.thisWeek - s.lastWeek;
+          const total = counts.get(c.value) ?? 0;
           const Icon = c.Icon;
           return (
             <button
@@ -149,14 +135,11 @@ export function PrioritiesSummaryWidget({ quarter, direction }: Props = {}) {
                 <Icon className={cn("h-4 w-4", c.iconCls)} />
               </div>
               <div className={cn("text-3xl font-semibold tabular-nums", c.iconCls)}>
-                <AnimatedNumber value={s.total} duration={500} />
+                <AnimatedNumber value={total} duration={500} />
               </div>
               <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
                 {c.description}
               </p>
-              <div className="mt-2 flex items-center gap-1 text-[11px]">
-                <DeltaPill delta={delta} thisWeek={s.thisWeek} />
-              </div>
             </button>
           );
         })}
@@ -165,33 +148,3 @@ export function PrioritiesSummaryWidget({ quarter, direction }: Props = {}) {
   );
 }
 
-function DeltaPill({ delta, thisWeek }: { delta: number; thisWeek: number }) {
-  // Show "+N за неделю" / "-N за неделю" / "без изменений за неделю" so the
-  // user can spot growing or shrinking workload in a glance.
-  if (delta === 0 && thisWeek === 0) {
-    return (
-      <span className="inline-flex items-center gap-1 text-muted-foreground">
-        <Minus className="h-3 w-3" /> без изменений за неделю
-      </span>
-    );
-  }
-  if (delta > 0) {
-    return (
-      <span className="inline-flex items-center gap-1 text-destructive">
-        <ArrowUpRight className="h-3 w-3" /> +{delta} за неделю
-      </span>
-    );
-  }
-  if (delta < 0) {
-    return (
-      <span className="inline-flex items-center gap-1 text-success">
-        <ArrowDownRight className="h-3 w-3" /> {delta} за неделю
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-muted-foreground">
-      <Minus className="h-3 w-3" /> +0 за неделю
-    </span>
-  );
-}
