@@ -246,9 +246,12 @@ export function ManagementUsersTab() {
                         disabled={!isSuper && eff === "superadmin"}
                         onValueChange={(v) => setRole.mutate({ user_id: u.user_id, role: v as AppRole })}
                       >
-                        <SelectTrigger className="h-7 w-[180px] text-xs">
+                        {/* h-auto + min-h-8 + w-[220px] — раньше w-[180px] и h-7
+                            обрезали бейдж «Руководитель отдела», и его pill-
+                            обводка вылезала за границу триггера. */}
+                        <SelectTrigger className="h-auto min-h-8 w-[220px] py-1 text-xs">
                           <SelectValue>
-                            <RoleBadge role={eff} />
+                            <RoleBadge role={eff} className="max-w-full" />
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>

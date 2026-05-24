@@ -30,12 +30,13 @@ export function RoleBadge({ role, className }: Props) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+        "inline-flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
         s.cls,
         className,
       )}
     >
-      <Icon className="h-3 w-3" /> {ROLE_LABELS[role]}
+      <Icon className="h-3 w-3 shrink-0" />
+      <span className="truncate">{ROLE_LABELS[role]}</span>
     </span>
   );
 }

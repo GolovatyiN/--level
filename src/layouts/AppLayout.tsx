@@ -203,17 +203,31 @@ export function AppLayout() {
             type="button"
             onClick={() => navigate("/tasks?overdue=1")}
             className={cn(
-              "flex w-full animate-fade-in items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 text-xs text-destructive transition-colors hover:bg-destructive/10",
-              compact ? "justify-center px-2 py-1.5" : "px-2.5 py-1.5",
+              "flex w-full animate-fade-in items-center rounded-md border border-destructive/30 bg-destructive/5 text-xs text-destructive transition-colors hover:bg-destructive/10",
+              compact ? "justify-center px-0 py-1.5" : "gap-2 px-2.5 py-1.5",
             )}
             title={`${overdueCount} задач просрочено`}
           >
-            <span className="relative flex h-2 w-2 shrink-0">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
-            </span>
-            <AlertTriangle className="h-3.5 w-3.5" />
-            {!compact && <span className="font-medium">{overdueCount} просрочено</span>}
+            {compact ? (
+              // В свёрнутом сайдбаре только треугольник с пингом-индикатором
+              // справа сверху — иначе две иконки впритык выглядят сломанно.
+              <span className="relative inline-flex">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="absolute -right-1 -top-1 flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+                </span>
+              </span>
+            ) : (
+              <>
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+                </span>
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <span className="font-medium">{overdueCount} просрочено</span>
+              </>
+            )}
           </button>
         )}
         <NotificationsBell compact={compact} />
