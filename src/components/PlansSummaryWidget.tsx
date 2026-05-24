@@ -95,6 +95,37 @@ export function PlansSummaryWidget({ quarter }: Props = {}) {
     return { ...acc, backlog };
   }, [scopedPlans, totalSlots]);
 
+  // Клик по карточке → deep-link.
+  // Если статусу соответствует ровно один план → /departments/<id>?quarter=Q<n>&tab=tasks.
+  // Если несколько → /plans c фильтром (пользователь увидит список отделов).
+  const goToBucket = (key: string) => {
+    if (key === "backlog") {
+      // У этого buckete нет плана; ведём на /plans отфильтрованных как backlog.
+      navigate("/plans?statuses=backlog");
+      return;
+    }
+    const wanted = scopedPlans.filter((p) => {
+      if (p.status === "archived") return false;
+      if (key === "draft") return p.status === "draft";
+      if (key === "on_review") return p.status === "on_review";
+      if (key === "changes_requested") return p.status === "changes_requested";
+      if (key === "completed") return p.status === "completed";
+      if (key === "approved") return READY_STATUSES.includes(p.status);
+      return false;
+    });
+    if (wanted.length === 1) {
+      const p = wanted[0];
+      const q = quarters.find((qq) => qq.id === p.quarter_id);
+      const prefix = q?.label.match(/^(Q[1-4])/i)?.[1].toUpperCase();
+      navigate(
+        `/departments/${p.direction_id}${prefix ? `?quarter=${prefix}&tab=tasks` : ""}`,
+      );
+      return;
+    }
+    // Несколько (или 0) → /plans со статус-фильтром.
+    navigate(`/plans?statuses=${key}`);
+  };
+
   // 4. Готовые = Готов + Завершён. Делим на общее число слотов.
   const readyCount = counts.ready + counts.completed;
   const avgProgress = totalSlots > 0 ? Math.round((readyCount / totalSlots) * 100) : 0;
@@ -153,9 +184,9 @@ export function PlansSummaryWidget({ quarter }: Props = {}) {
             <button
               key={c.key}
               type="button"
-              onClick={() => navigate("/plans")}
+              onClick={() => goToBucket(c.key)}
               style={{ animationDelay: `${idx * 30}ms` }}
-              className="hover-lift animate-fade-in rounded-xl border border-border bg-card p-3 text-left shadow-card"
+              className="hover-lift animate-fade-in rounded-xl border border-border bg-card p-3 text-left shadow-card transition-colors hover:border-foreground/30"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -206,7 +237,12 @@ export function PlansSummaryWidget({ quarter }: Props = {}) {
                   <li key={plan.id}>
                     <button
                       type="button"
-                      onClick={() => navigate(`/plans/${plan.id}`)}
+                      onClick={() => {
+                        const prefix = q?.label.match(/^(Q[1-4])/i)?.[1].toUpperCase();
+                        navigate(
+                          `/departments/${plan.direction_id}${prefix ? `?quarter=${prefix}&tab=tasks` : ""}`,
+                        );
+                      }}
                       className="flex w-full items-center gap-2 rounded text-left text-xs transition-colors hover:text-foreground"
                     >
                       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: dir?.color ?? "#888" }} />
@@ -232,7 +268,12 @@ export function PlansSummaryWidget({ quarter }: Props = {}) {
                   <li key={plan.id}>
                     <button
                       type="button"
-                      onClick={() => navigate(`/plans/${plan.id}`)}
+                      onClick={() => {
+                        const prefix = q?.label.match(/^(Q[1-4])/i)?.[1].toUpperCase();
+                        navigate(
+                          `/departments/${plan.direction_id}${prefix ? `?quarter=${prefix}&tab=tasks` : ""}`,
+                        );
+                      }}
                       className="flex w-full items-center gap-2 rounded text-left text-xs transition-colors hover:text-foreground"
                     >
                       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: dir?.color ?? "#888" }} />

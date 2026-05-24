@@ -62,11 +62,12 @@ import { cn, isOverdue } from "@/lib/utils";
 // Реальные значения в БД для одной кнопки могут раскрываться в несколько
 // (например, «Готов» включает все пост-апрувные статусы).
 const STATUS_FILTERS: { key: string; label: string; matches: (s: PlanStatus | null) => boolean }[] = [
-  { key: "backlog",  label: "Бэклог",          matches: (s) => s === null },
-  { key: "draft",    label: "В процессе",      matches: (s) => s === "draft" },
-  { key: "on_review", label: "На согласовании", matches: (s) => s === "on_review" },
-  { key: "approved", label: "Готов",           matches: (s) => s === "approved" || s === "in_progress" || s === "at_risk" || s === "blocked" },
-  { key: "completed", label: "Завершён",       matches: (s) => s === "completed" },
+  { key: "backlog",           label: "Бэклог",          matches: (s) => s === null },
+  { key: "draft",             label: "В процессе",      matches: (s) => s === "draft" },
+  { key: "on_review",         label: "На согласовании", matches: (s) => s === "on_review" },
+  { key: "changes_requested", label: "Нужны правки",    matches: (s) => s === "changes_requested" },
+  { key: "approved",          label: "Готов",           matches: (s) => s === "approved" || s === "in_progress" || s === "at_risk" || s === "blocked" },
+  { key: "completed",         label: "Завершён",        matches: (s) => s === "completed" },
 ];
 
 const QUARTER_NUMBERS = ["Q1", "Q2", "Q3", "Q4"] as const;
