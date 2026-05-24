@@ -31,6 +31,27 @@ interface Props {
   defaults?: Partial<Task>;
 }
 
+/**
+ * Подсказка для поля «Новый квартал» — предлагает первый
+ * НЕДОСТАЮЩИЙ квартал. Если в системе уже есть Q2 / Q3 / Q4 2026,
+ * но нет Q1 2026 — подскажет именно его. Если все 4 квартала года
+ * есть — подскажет Q1 следующего года. Это полезнее, чем хардкод
+ * «Q1 2027» — пользователь часто заносит исторические периоды.
+ */
+function nextSuggestedQuarter(existing: string[]): string {
+  const set = new Set(existing.map((l) => l.trim().toUpperCase()));
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  // Сначала проверим текущий год — недостающие Q.
+  for (let y = currentYear - 1; y <= currentYear + 2; y++) {
+    for (let q = 1; q <= 4; q++) {
+      const label = `Q${q} ${y}`;
+      if (!set.has(label.toUpperCase())) return label;
+    }
+  }
+  return `Q1 ${currentYear + 1}`;
+}
+
 export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
   const { data: directions = [] } = useDirections();
   const create = useCreateTask();
@@ -151,7 +172,7 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
                 onValueChange={(v) => set("quarter", v)}
                 options={quarters.map((q) => ({ value: q.label, label: q.label }))}
                 placeholder="—"
-                createLabel="Новый квартал (Q1 2027)"
+                createLabel={`Новый квартал (например ${nextSuggestedQuarter(quarters.map((q) => q.label))})`}
                 onCreate={async (label) => {
                   const q = await createQuarter.mutateAsync(label);
                   return q?.label;
