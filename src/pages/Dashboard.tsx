@@ -75,8 +75,17 @@ export default function Dashboard() {
    */
   const goToTasks = (key: StatusKey) => {
     const params = new URLSearchParams();
-    if (key !== "all") params.set("status", key);
-    if (quarter !== "all") params.set("quarter", quarter);
+    if (key === "overdue") {
+      // На /tasks «просроченные» это отдельный boolean-фильтр, а не статус.
+      params.set("overdue", "1");
+    } else if (key !== "all") {
+      params.set("status", key);
+    }
+    if (quarter !== "all") {
+      // На дашборде quarter — полный label ("Q3 2026"); /tasks ждёт префикс.
+      const prefix = quarter.match(/^(Q[1-4])/i)?.[1].toUpperCase();
+      if (prefix) params.set("quarter", prefix);
+    }
     if (direction !== "all") params.set("direction", direction);
     navigate(`/tasks${params.toString() ? `?${params.toString()}` : ""}`);
   };
