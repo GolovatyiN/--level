@@ -426,6 +426,7 @@ function DirectionRow({
   onCreate: (quarter_id: string) => void;
   onEdit: () => void;
 }) {
+  const navigate = useNavigate();
   const {
     attributes,
     listeners,
@@ -469,7 +470,15 @@ function DirectionRow({
             className="h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: direction.color }}
           />
-          <span className="font-medium">{direction.name}</span>
+          {/* Клик по названию открывает годовой обзор отдела —
+              /departments/:id, основная точка входа в работу отдела. */}
+          <button
+            type="button"
+            onClick={() => navigate(`/departments/${direction.id}`)}
+            className="font-medium transition-colors hover:text-foreground"
+          >
+            {direction.name}
+          </button>
           {canManage && (
             <button
               type="button"

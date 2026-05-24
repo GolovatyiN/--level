@@ -10,6 +10,7 @@ import Auth from "./pages/Auth.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Plans from "./pages/Plans.tsx";
 import PlanDetail from "./pages/PlanDetail.tsx";
+import DepartmentDetail from "./pages/DepartmentDetail.tsx";
 import QuarterDetail from "./pages/QuarterDetail.tsx";
 import Archive from "./pages/Archive.tsx";
 import Management from "./pages/Management.tsx";
@@ -79,6 +80,10 @@ const App = () => (
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/plans" element={<Plans />} />
                 <Route path="/plans/:id" element={<PlanDetail />} />
+                {/* Годовой обзор отдела — основная точка входа в работу
+                    конкретного отдела (страница per-quarter теперь
+                    вторична). См. DepartmentDetail. */}
+                <Route path="/departments/:id" element={<DepartmentDetail />} />
                 <Route path="/quarters/:id" element={<QuarterDetail />} />
                 {/* /tasks, /roadmap, /kanban, /table — старая страница
                     «Планы и задачи» удалена; всё управление задачами
