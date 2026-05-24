@@ -8,6 +8,19 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Единый стиль таблиц задач во всей системе. Используется на /plans,
+ * /plans/:id и /departments/:id, чтобы колонки выровнялись одинаково.
+ * Центрируем коммерческие колонки (статус, приоритет, даты, и т.п.) и
+ * оставляем по левому краю длинные тексты (название, комментарий, итог).
+ */
+export const taskTableClasses = {
+  cellLeft:   "px-3 py-2 text-left align-middle",
+  cellCenter: "px-3 py-2 text-center align-middle",
+  headLeft:   "px-3 py-2 text-left whitespace-nowrap",
+  headCenter: "px-3 py-2 text-center whitespace-nowrap",
+} as const;
+
+/**
  * Один источник правды для понятия «просрочена». Задача считается
  * просроченной если:
  *   * у неё есть дедлайн,

@@ -31,7 +31,7 @@ import {
 import { MultiSelectPopover } from "@/components/MultiSelectPopover";
 import { PriorityBadge } from "@/components/StatusBadge";
 import { TaskStatusSelect } from "@/components/TaskStatusSelect";
-import { isOverdue } from "@/lib/utils";
+import { isOverdue, taskTableClasses as tt } from "@/lib/utils";
 import { STATUSES } from "@/lib/constants";
 import {
   AlertDialog,
@@ -459,12 +459,28 @@ function TasksTab({
     return [...r].sort(cmp[sort.key]);
   }, [tasks, search, statusFilter, sort, userMap]);
 
-  const SortHead = ({ k, label }: { k: SortKey; label: string }) => (
+  const SortHead = ({
+    k,
+    label,
+    align = "center",
+  }: {
+    k: SortKey;
+    label: string;
+    align?: "left" | "center";
+  }) => (
     <TableHead
       onClick={() => toggleSort(k)}
-      className="cursor-pointer select-none whitespace-nowrap hover:text-foreground"
+      className={cn(
+        "cursor-pointer select-none whitespace-nowrap hover:text-foreground",
+        align === "center" ? tt.headCenter : tt.headLeft,
+      )}
     >
-      <span className="inline-flex items-center gap-1">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1",
+          align === "center" && "justify-center",
+        )}
+      >
         {label}
         {sort.key === k && (
           <span className="text-[10px] text-muted-foreground">{sort.dir === "asc" ? "↑" : "↓"}</span>
@@ -516,13 +532,13 @@ function TasksTab({
         <Table>
           <TableHeader>
             <TableRow>
-              <SortHead k="title"      label="Название" />
+              <SortHead k="title"      label="Название"     align="left" />
               <SortHead k="status"     label="Статус" />
               <SortHead k="priority"   label="Приоритет" />
               <SortHead k="assignee"   label="Ответственный" />
               <SortHead k="deadline"   label="Дедлайн" />
-              <SortHead k="remark"     label="Комментарий" />
-              <SortHead k="outcome"    label="Итог" />
+              <SortHead k="remark"     label="Комментарий"  align="left" />
+              <SortHead k="outcome"    label="Итог"         align="left" />
               <SortHead k="created_at" label="Создана" />
               <SortHead k="updated_at" label="Обновлена" />
             </TableRow>
@@ -539,28 +555,37 @@ function TasksTab({
                   className="cursor-pointer hover:bg-muted/40"
                   onClick={() => onEdit(t)}
                 >
-                  <TableCell className="max-w-[260px]">
-                    <div className="font-medium">{t.title}</div>
+                  <TableCell className={cn(tt.cellLeft, "max-w-[260px]")}>
+                    <div className="truncate font-medium" title={t.title}>{t.title}</div>
                     {t.description && (
-                      <div className="truncate text-xs text-muted-foreground">{t.description}</div>
+                      <div className="truncate text-xs text-muted-foreground" title={t.description}>
+                        {t.description}
+                      </div>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <TaskStatusSelect task={t} disabled={!canEdit} />
+                  <TableCell className={tt.cellCenter}>
+                    <div className="inline-flex">
+                      <TaskStatusSelect task={t} disabled={!canEdit} />
+                    </div>
                   </TableCell>
-                  <TableCell><PriorityBadge priority={t.priority} /></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className={tt.cellCenter}>
+                    <div className="inline-flex justify-center">
+                      <PriorityBadge priority={t.priority} />
+                    </div>
+                  </TableCell>
+                  <TableCell className={cn(tt.cellCenter, "text-sm text-muted-foreground")}>
                     {assigneeName ?? "—"}
                   </TableCell>
                   <TableCell
                     className={cn(
+                      tt.cellCenter,
                       "whitespace-nowrap text-sm text-muted-foreground",
                       overdue && "font-medium text-destructive",
                     )}
                   >
                     {t.deadline ? format(parseISO(t.deadline), "dd.MM.yyyy") : "—"}
                   </TableCell>
-                  <TableCell className="max-w-[200px] text-sm">
+                  <TableCell className={cn(tt.cellLeft, "max-w-[200px] text-sm")}>
                     {t.latest_remark ? (
                       <span className="block truncate text-muted-foreground" title={t.latest_remark}>
                         {t.latest_remark}
@@ -569,7 +594,7 @@ function TasksTab({
                       <span className="text-muted-foreground/50">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-[200px] text-sm">
+                  <TableCell className={cn(tt.cellLeft, "max-w-[200px] text-sm")}>
                     {t.outcome ? (
                       <span className="block truncate text-muted-foreground" title={t.outcome}>
                         {t.outcome}
@@ -578,10 +603,10 @@ function TasksTab({
                       <span className="text-muted-foreground/50">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                  <TableCell className={cn(tt.cellCenter, "whitespace-nowrap text-xs text-muted-foreground tabular-nums")}>
                     {format(parseISO(t.created_at), "dd.MM.yyyy")}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                  <TableCell className={cn(tt.cellCenter, "whitespace-nowrap text-xs text-muted-foreground tabular-nums")}>
                     {format(parseISO(t.updated_at), "dd.MM.yyyy")}
                   </TableCell>
                 </TableRow>
