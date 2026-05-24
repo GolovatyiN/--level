@@ -127,6 +127,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 3b. Если пользователь существует но отключён — не создаём для
+    // него новую invite-ссылку. Сначала его нужно активировать в
+    // /management → Пользователи. Иначе invite даст человеку доступ
+    // в обход деактивации.
+    {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("is_active")
+        .eq("user_id", newUser.id)
+        .maybeSingle();
+      if (prof && (prof as any).is_active === false) {
+        return json(
+          {
+            error:
+              "Пользователь с этим email отключён. Сначала активируйте его в /management → Пользователи.",
+            user_id: newUser.id,
+          },
+          403,
+        );
+      }
+    }
+
     // 4. Invalidate previous unused invites for this user, then create a fresh
     // one. Keeping a single live invite per user means clicking "create link"
     // again rotates the token (older copies of the URL stop working).

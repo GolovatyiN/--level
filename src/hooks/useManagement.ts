@@ -145,11 +145,27 @@ export function useSetUserActive() {
         .update({ is_active } as any)
         .eq("user_id", user_id);
       if (error) throw error;
+
+      // При деактивации — отзываем все активные invite-ссылки для
+      // этого пользователя, чтобы их нельзя было использовать
+      // повторно после отключения.
+      if (!is_active) {
+        await supabase
+          .from("invites" as any)
+          .update({ used_at: new Date().toISOString() } as any)
+          .eq("user_id", user_id)
+          .is("used_at", null);
+      }
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["management_users"] });
       qc.invalidateQueries({ queryKey: ["audit_log"] });
-      toast.success(v.is_active ? "Пользователь активирован" : "Пользователь деактивирован");
+      qc.invalidateQueries({ queryKey: ["invites"] });
+      toast.success(
+        v.is_active
+          ? "Пользователь активирован"
+          : "Пользователь деактивирован. RLS блокирует его запросы; активные приглашения отозваны.",
+      );
     },
     onError: (e: any) => toast.error(e.message),
   });
