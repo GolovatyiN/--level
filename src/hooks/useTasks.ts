@@ -84,14 +84,16 @@ async function logHistory(taskId: string, eventType: string, description: string
 
 /**
  * Strip optional fields that map to columns added by recent migrations,
- * but only when they have no value. This way the basic create/update
- * flows still work against a Supabase that hasn't yet applied the
- * `user_assignments_and_notifications` migration; setting an actual user
- * is the only path that requires the column to exist.
+ * but only when the caller didn't touch them. We must distinguish:
+ *   - undefined → field absent from the form, omit so old DBs still work;
+ *   - null      → user explicitly cleared the assignee, MUST be sent so the
+ *                 column is set back to NULL.
+ * Previously we stripped on `== null` which silently dropped both cases and
+ * made it impossible to clear an assignee through the UI.
  */
 function stripUnreadyTaskFields<T extends Partial<Task>>(input: T): T {
   const out: any = { ...input };
-  if (out.assignee_id == null) delete out.assignee_id;
+  if (!("assignee_id" in out) || out.assignee_id === undefined) delete out.assignee_id;
   return out;
 }
 

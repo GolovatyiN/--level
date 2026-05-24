@@ -2,6 +2,8 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Archive,
+  ChevronsLeft,
+  ChevronsRight,
   Plus,
   ClipboardCheck,
   Menu,
@@ -35,6 +37,17 @@ export function AppLayout() {
   const [openCreate, setOpenCreate] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Сворачиваемый сайдбар: состояние читаем из localStorage,
+  // чтобы пользователь не разворачивал заново каждый раз.
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("sidebar-collapsed") === "1";
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("sidebar-collapsed", collapsed ? "1" : "0");
+  }, [collapsed]);
   const canManage = useCanManage();
   const nav = [
     ...NAV,
@@ -66,17 +79,27 @@ export function AppLayout() {
     setMobileOpen(false);
   }, [location.pathname]);
 
-  const sidebarContent = (
+  // Свёрнутый сайдбар работает только на desktop. На мобильном
+  // drawer всегда полный (`compact = false`), чтобы при открытии
+  // меню по тапу пользователь видел все подписи.
+  const renderSidebar = (compact: boolean) => (
     <>
-      <div className="flex items-center justify-between px-5 py-5 lg:justify-start lg:gap-2">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground">
+      <div
+        className={cn(
+          "flex items-center px-5 py-5 lg:gap-2",
+          compact ? "lg:justify-center lg:px-2" : "justify-between lg:justify-start",
+        )}
+      >
+        <div className={cn("flex items-center gap-2", compact && "lg:gap-0")}>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-foreground">
             <span className="text-sm font-bold text-background">ST</span>
           </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold text-sidebar-foreground">SEO Team Hub</span>
-            <span className="text-[10px] text-muted-foreground">Дорожная карта и задачи</span>
-          </div>
+          {!compact && (
+            <div className="flex flex-col leading-tight">
+              <span className="text-sm font-semibold text-sidebar-foreground">SEO Team Hub</span>
+              <span className="text-[10px] text-muted-foreground">Дорожная карта и задачи</span>
+            </div>
+          )}
         </div>
         <Button
           type="button"
@@ -90,24 +113,45 @@ export function AppLayout() {
         </Button>
       </div>
 
-      <div className="space-y-1.5 px-3">
-        <Button onClick={() => setOpenCreate(true)} className="w-full justify-start gap-2" size="sm">
-          <Plus className="h-4 w-4" /> Новая задача
-          <kbd className="ml-auto rounded border border-primary-foreground/20 bg-primary-foreground/10 px-1.5 py-px text-[10px] font-mono text-primary-foreground/70">
-            N
-          </kbd>
+      <div className={cn("space-y-1.5", compact ? "px-2" : "px-3")}>
+        <Button
+          onClick={() => setOpenCreate(true)}
+          size="sm"
+          className={cn(
+            "w-full gap-2",
+            compact ? "justify-center px-0" : "justify-start",
+          )}
+          title={compact ? "Новая задача (N)" : undefined}
+        >
+          <Plus className="h-4 w-4" />
+          {!compact && (
+            <>
+              Новая задача
+              <kbd className="ml-auto rounded border border-primary-foreground/20 bg-primary-foreground/10 px-1.5 py-px text-[10px] font-mono text-primary-foreground/70">
+                N
+              </kbd>
+            </>
+          )}
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setPaletteOpen(true)}
-          className="w-full justify-start gap-2 text-muted-foreground"
+          className={cn(
+            "w-full gap-2 text-muted-foreground",
+            compact ? "justify-center px-0" : "justify-start",
+          )}
+          title={compact ? "Поиск (⌘K)" : undefined}
         >
           <Search className="h-3.5 w-3.5" />
-          <span className="text-xs">Поиск...</span>
-          <kbd className="ml-auto rounded border border-border bg-muted px-1.5 py-px text-[10px] font-mono">
-            ⌘K
-          </kbd>
+          {!compact && (
+            <>
+              <span className="text-xs">Поиск...</span>
+              <kbd className="ml-auto rounded border border-border bg-muted px-1.5 py-px text-[10px] font-mono">
+                ⌘K
+              </kbd>
+            </>
+          )}
         </Button>
       </div>
 
@@ -117,18 +161,22 @@ export function AppLayout() {
             key={item.to}
             to={item.to}
             end={(item as any).end}
+            title={compact ? item.label : undefined}
             className={({ isActive }) =>
               cn(
-                "group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "group relative flex items-center rounded-md text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                compact
+                  ? "justify-center px-2 py-2"
+                  : "gap-2.5 px-3 py-2",
                 isActive
                   ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:translate-x-0.5",
+                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+                !compact && !isActive && "hover:translate-x-0.5",
               )
             }
           >
             {({ isActive }) => (
               <>
-                {/* Left accent bar — slides in on hover, persists on active */}
                 <span
                   aria-hidden
                   className={cn(
@@ -142,19 +190,22 @@ export function AppLayout() {
                     isActive ? "scale-110" : "group-hover:scale-110",
                   )}
                 />
-                {item.label}
+                {!compact && item.label}
               </>
             )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="space-y-1 border-t border-sidebar-border p-3">
+      <div className={cn("space-y-1 border-t border-sidebar-border", compact ? "p-2" : "p-3")}>
         {overdueCount > 0 && (
           <button
             type="button"
             onClick={() => navigate("/tasks?overdue=1")}
-            className="flex w-full animate-fade-in items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/10"
+            className={cn(
+              "flex w-full animate-fade-in items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 text-xs text-destructive transition-colors hover:bg-destructive/10",
+              compact ? "justify-center px-2 py-1.5" : "px-2.5 py-1.5",
+            )}
             title={`${overdueCount} задач просрочено`}
           >
             <span className="relative flex h-2 w-2 shrink-0">
@@ -162,7 +213,7 @@ export function AppLayout() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
             </span>
             <AlertTriangle className="h-3.5 w-3.5" />
-            <span className="font-medium">{overdueCount} просрочено</span>
+            {!compact && <span className="font-medium">{overdueCount} просрочено</span>}
           </button>
         )}
         <NotificationsBell />
@@ -170,6 +221,22 @@ export function AppLayout() {
         <div className="pt-1">
           <UserMenu />
         </div>
+        {/* Кнопка свернуть/развернуть — только desktop */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setCollapsed((v) => !v)}
+          className={cn(
+            "hidden w-full text-muted-foreground lg:flex",
+            compact ? "justify-center px-0" : "justify-start gap-2",
+          )}
+          title={compact ? "Развернуть меню" : "Свернуть меню"}
+          aria-label={compact ? "Развернуть меню" : "Свернуть меню"}
+        >
+          {compact ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+          {!compact && <span className="text-xs">Свернуть</span>}
+        </Button>
       </div>
     </>
   );
@@ -177,8 +244,13 @@ export function AppLayout() {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-        {sidebarContent}
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 lg:flex",
+          collapsed ? "w-14" : "w-60",
+        )}
+      >
+        {renderSidebar(collapsed)}
       </aside>
 
       {/* Mobile drawer */}
@@ -191,7 +263,7 @@ export function AppLayout() {
             onClick={() => setMobileOpen(false)}
           />
           <aside className="absolute left-0 top-0 flex h-full w-72 flex-col border-r border-sidebar-border bg-sidebar shadow-elegant">
-            {sidebarContent}
+            {renderSidebar(false)}
           </aside>
         </div>
       )}
