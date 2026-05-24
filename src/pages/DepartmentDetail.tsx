@@ -40,9 +40,11 @@ import { PageLoader } from "@/components/UiState";
 import { PriorityBadge } from "@/components/StatusBadge";
 import { PlanStatusBadge } from "@/components/PlanStatusBadge";
 import { PlanOutcomesForm } from "@/components/PlanOutcomesForm";
+import { PlanHistoryTimeline } from "@/components/PlanHistoryTimeline";
 import { TaskStatusSelect } from "@/components/TaskStatusSelect";
 import { TaskDialog } from "@/components/TaskDialog";
 import { MultiSelectPopover } from "@/components/MultiSelectPopover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDirections } from "@/hooks/useDirections";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { useTasks, useUpdateTask, type Task } from "@/hooks/useTasks";
@@ -414,7 +416,13 @@ export default function DepartmentDetail() {
             <DeptCommentsTab plans={deptPlans} />
           </TabsContent>
           <TabsContent value="history" className="animate-fade-in">
-            <DeptHistoryTab plans={deptPlans} />
+            {/* Конкретный квартал → встроенный timeline только по нему.
+                «Все кварталы» → карточки с переходом в per-plan историю. */}
+            {quarterFilter !== "all" && selectedPlan ? (
+              <PlanHistoryTimeline planId={selectedPlan.id} />
+            ) : (
+              <DeptHistoryTab plans={deptPlans} />
+            )}
           </TabsContent>
           <TabsContent value="summary" className="animate-fade-in">
             {/* Если выбран конкретный квартал и план существует —
@@ -873,14 +881,14 @@ function TasksTab({
 
 function RemarkEditor({ task, disabled }: { task: Task; disabled: boolean }) {
   const update = useUpdateTask();
-  const [editing, setEditing] = useState(false);
+  const [open, setOpen] = useState(false);
   const [value, setValue] = useState(task.latest_remark ?? "");
 
   // Если кто-то меняет задачу из другого места (модалка, статус-смена) —
-  // подтягиваем актуальное значение в state.
+  // подтягиваем актуальное значение, когда popover закрыт.
   useEffect(() => {
-    if (!editing) setValue(task.latest_remark ?? "");
-  }, [task.latest_remark, editing]);
+    if (!open) setValue(task.latest_remark ?? "");
+  }, [task.latest_remark, open]);
 
   const save = () => {
     const trimmed = value.trim();
@@ -892,48 +900,102 @@ function RemarkEditor({ task, disabled }: { task: Task; disabled: boolean }) {
         prev: task,
       });
     }
-    setEditing(false);
+    setOpen(false);
   };
 
   if (disabled) {
-    return <div className="truncate" title={task.latest_remark ?? undefined}>{task.latest_remark ?? "—"}</div>;
-  }
-
-  if (!editing) {
     return (
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="block w-full min-w-0 truncate text-left transition-colors hover:text-foreground"
-        title={task.latest_remark ?? "Кликните, чтобы добавить замечание"}
-      >
-        {task.latest_remark || (
-          <span className="text-muted-foreground/60 italic">добавить замечание</span>
-        )}
-      </button>
+      <div className="truncate" title={task.latest_remark ?? undefined}>
+        {task.latest_remark ?? "—"}
+      </div>
     );
   }
 
+  // Триггер — узкая строка в ячейке (truncate с tooltip). Popover открывает
+  // полноразмерный textarea с кнопками «Сохранить» / «Отмена».
   return (
-    <Textarea
-      autoFocus
-      rows={2}
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={save}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-          e.preventDefault();
-          save();
-        }
-        if (e.key === "Escape") {
-          setValue(task.latest_remark ?? "");
-          setEditing(false);
-        }
-      }}
-      placeholder="Замечание руководителя..."
-      className="min-h-[3rem] text-xs"
-    />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="block w-full min-w-0 truncate rounded text-left transition-colors hover:bg-muted/60 hover:text-foreground"
+          title={task.latest_remark ?? "Кликните, чтобы добавить замечание"}
+        >
+          {task.latest_remark || (
+            <span className="text-muted-foreground/60 italic">добавить замечание</span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        side="bottom"
+        sideOffset={4}
+        className="w-[420px] p-3"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-semibold text-muted-foreground">
+            Замечание руководителя
+          </span>
+          <span className="text-[10px] text-muted-foreground/70">
+            Cmd/Ctrl+Enter — сохранить · Esc — отмена
+          </span>
+        </div>
+        <Textarea
+          autoFocus
+          rows={5}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              save();
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              setValue(task.latest_remark ?? "");
+              setOpen(false);
+            }
+          }}
+          placeholder="Что нужно поправить, на что обратить внимание..."
+          className="text-sm"
+        />
+        <div className="mt-2 flex items-center justify-end gap-2">
+          {task.latest_remark && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                update.mutate({
+                  id: task.id,
+                  patch: { latest_remark: null },
+                  prev: task,
+                });
+                setOpen(false);
+              }}
+              className="text-muted-foreground"
+            >
+              Удалить
+            </Button>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setValue(task.latest_remark ?? "");
+              setOpen(false);
+            }}
+          >
+            Отмена
+          </Button>
+          <Button type="button" size="sm" onClick={save} disabled={update.isPending}>
+            Сохранить
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

@@ -172,7 +172,10 @@ export default function Dashboard() {
         <PrioritiesSummaryWidget quarter={quarter} direction={direction} />
 
         {/* 3. Quarterly plans — статистика по всем отделам в выбранном квартале */}
-        <PlansSummaryWidget quarter={quarter} />
+        {/* Plans widget намеренно не фильтруем по дашбордному кварталу:
+            если план Q3 отправлен на согласование, счётчик «На согласовании»
+            должен расти независимо от того, какой квартал выбран в шапке. */}
+        <PlansSummaryWidget />
 
         {/* 4. По отделам — компактные KPI-карточки. Сетка адаптивная:
             mobile = 1 / tablet = 2 / laptop = 3 / desktop ≥1440 = 4 в ряд.
