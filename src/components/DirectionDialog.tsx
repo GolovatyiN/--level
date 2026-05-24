@@ -71,7 +71,14 @@ export function DirectionDialog({ open, onOpenChange, direction }: Props) {
         <DialogHeader>
           <DialogTitle>{direction ? "Редактировать отдел" : "Новый отдел"}</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!form.name?.trim() || isSaving) return;
+            submit();
+          }}
+          className="grid gap-4"
+        >
           <div className="grid gap-1.5">
             <Label htmlFor="direction-name">Название</Label>
             <Input
@@ -119,31 +126,32 @@ export function DirectionDialog({ open, onOpenChange, direction }: Props) {
               ))}
             </div>
           </div>
-        </div>
-        <DialogFooter className="sm:justify-between">
-          <div>
-            {direction && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmDelete(true)}
-                disabled={isSaving || isDeleting}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="mr-1.5 h-4 w-4" /> Удалить
+          <DialogFooter className="sm:justify-between">
+            <div>
+              {direction && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={isSaving || isDeleting}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" /> Удалить
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
+                Отмена
               </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
-              Отмена
-            </Button>
-            <Button onClick={submit} disabled={!form.name?.trim() || isSaving}>
-              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Сохранить
-            </Button>
-          </div>
-        </DialogFooter>
+              <Button type="submit" disabled={!form.name?.trim() || isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Сохранить
+              </Button>
+            </div>
+          </DialogFooter>
+        </form>
       </DialogContent>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

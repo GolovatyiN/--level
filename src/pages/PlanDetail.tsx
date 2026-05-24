@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -75,6 +75,7 @@ import { cn } from "@/lib/utils";
 export default function PlanDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const isAdmin = useIsAdmin();
 
@@ -117,6 +118,25 @@ export default function PlanDetail() {
           ← К списку планов
         </Button>
       </div>
+    );
+  }
+
+  // Основной сценарий теперь живёт на /departments/:id?quarter=Qx&tab=...
+  // Старая страница /plans/:id используется только как переход
+  // из легаси-уведомлений и закладок — редиректим на правильный URL,
+  // сохраняя выбранную вкладку (?tab=...), если она была.
+  if (direction) {
+    const search = new URLSearchParams(location.search);
+    const prefix = quarter?.label.match(/^(Q[1-4])/i)?.[1].toUpperCase();
+    const tab = search.get("tab") ?? "tasks";
+    const params = new URLSearchParams();
+    if (prefix) params.set("quarter", prefix);
+    if (tab !== "tasks") params.set("tab", tab);
+    return (
+      <Navigate
+        to={`/departments/${direction.id}${params.toString() ? `?${params.toString()}` : ""}`}
+        replace
+      />
     );
   }
 
