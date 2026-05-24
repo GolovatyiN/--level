@@ -233,7 +233,14 @@ export function InviteUserDialog({ open, onOpenChange }: Props) {
             </DialogFooter>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (submitting) return;
+              submit();
+            }}
+            className="grid gap-4"
+          >
             <div className="grid gap-1.5">
               <Label htmlFor="invite_email">Email *</Label>
               <Input
@@ -335,15 +342,15 @@ export function InviteUserDialog({ open, onOpenChange }: Props) {
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => handleClose(false)} disabled={submitting}>
+              <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={submitting}>
                 Отмена
               </Button>
-              <Button onClick={submit} disabled={submitting}>
+              <Button type="submit" disabled={submitting}>
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Создать ссылку
               </Button>
             </DialogFooter>
-          </div>
+          </form>
         )}
       </DialogContent>
     </Dialog>

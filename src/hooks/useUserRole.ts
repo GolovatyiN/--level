@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDirections } from "@/hooks/useDirections";
+import { useDepartmentAccess } from "@/hooks/useManagement";
 
 export type AppRole =
   | "superadmin"
@@ -76,5 +78,39 @@ export function useIsDepartmentHead() {
     roles.includes("department_head") ||
     roles.includes("admin") ||
     roles.includes("superadmin")
+  );
+}
+
+/**
+ * Может ли текущий пользователь РЕДАКТИРОВАТЬ конкретный отдел —
+ * создавать/менять планы и задачи. Это не то же самое, что
+ * «утверждать» (это только админ).
+ *
+ * Возвращает true если:
+ *   • admin / superadmin, ИЛИ
+ *   • пользователь — head_user_id этого отдела, ИЛИ
+ *   • у него выдан user_department_access уровня 'edit' / 'full'.
+ *
+ * RLS на бэке проверяет то же самое (см. has_direction_access).
+ * Хук просто отражает это в UI, чтобы не показывать кнопки, которые
+ * RLS всё равно отрежет.
+ */
+export function useCanEditDirection(directionId?: string | null): boolean {
+  const { user } = useAuth();
+  const { data: roles = [] } = useUserRoles();
+  const { data: directions = [] } = useDirections();
+  const { data: access = [] } = useDepartmentAccess();
+
+  if (!user || !directionId) return false;
+  if (roles.includes("admin") || roles.includes("superadmin")) return true;
+
+  const dir = directions.find((d) => d.id === directionId);
+  if (dir?.head_user_id === user.id) return true;
+
+  return access.some(
+    (a) =>
+      a.user_id === user.id &&
+      a.direction_id === directionId &&
+      (a.access_level === "edit" || a.access_level === "full"),
   );
 }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
-import { Search, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { PageTabs } from "@/components/PageTabs";
@@ -157,6 +157,7 @@ export default function AllTasks() {
   }, [tasks, search, filterDirs, filterQuarters, filterStatuses, filterPriorities, filterAssignees, onlyOverdue, onlyWithRemark, onlyWithOutcome, sort, userMap, dirById]);
 
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [creatingTask, setCreatingTask] = useState(false);
 
   const toggleSort = (key: SortKey) =>
     setSort((s) =>
@@ -247,6 +248,11 @@ export default function AllTasks() {
       <PageHeader
         title="Квартальные планы"
         description="Список задач по компании с фильтрами и поиском"
+        actions={
+          <Button size="sm" onClick={() => setCreatingTask(true)}>
+            <Plus className="mr-1 h-4 w-4" /> Создать задачу
+          </Button>
+        }
       />
 
       <PageTabs
@@ -466,6 +472,17 @@ export default function AllTasks() {
         open={!!editingTask}
         onOpenChange={(v) => !v && setEditingTask(null)}
         task={editingTask}
+      />
+      <TaskDialog
+        open={creatingTask}
+        onOpenChange={setCreatingTask}
+        defaults={(() => {
+          const d: Partial<Task> = {};
+          // Если в фильтрах ровно один отдел выбран — подставляем его
+          // по умолчанию (пользователь явно работает в этом скоупе).
+          if (filterDirs.length === 1) d.direction_id = filterDirs[0];
+          return d;
+        })()}
       />
     </>
   );

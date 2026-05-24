@@ -99,7 +99,17 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
           <DialogTitle>{task ? "Редактировать задачу" : "Новая задача"}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        {/* Оборачиваем форму в <form> → Enter в обычных input'ах
+            автоматически вызывает submit. Внутри Textarea Enter
+            создаёт перенос строки, как и положено. */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!form.title?.trim() || isSaving) return;
+            submit();
+          }}
+          className="grid gap-4"
+        >
           <div className="grid gap-1.5">
             <Label htmlFor="task-title">Название</Label>
             <Input
@@ -267,38 +277,39 @@ export function TaskDialog({ open, onOpenChange, task, defaults }: Props) {
               </ul>
             </div>
           )}
-        </div>
 
-        <DialogFooter className="gap-2 sm:justify-between">
-          <div className="flex gap-2">
-            {task && (
-              <>
-                <Button variant="outline" size="sm" onClick={toggleArchive} disabled={isSaving || isDeleting}>
-                  {task.archived ? <ArchiveRestore className="mr-1.5 h-4 w-4" /> : <Archive className="mr-1.5 h-4 w-4" />}
-                  {task.archived ? "Восстановить" : "В архив"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmDelete(true)}
-                  disabled={isSaving || isDeleting}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="mr-1.5 h-4 w-4" /> Удалить
-                </Button>
-              </>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
-              Отмена
-            </Button>
-            <Button onClick={submit} disabled={!form.title?.trim() || isSaving}>
-              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Сохранить
-            </Button>
-          </div>
-        </DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <div className="flex gap-2">
+              {task && (
+                <>
+                  <Button type="button" variant="outline" size="sm" onClick={toggleArchive} disabled={isSaving || isDeleting}>
+                    {task.archived ? <ArchiveRestore className="mr-1.5 h-4 w-4" /> : <Archive className="mr-1.5 h-4 w-4" />}
+                    {task.archived ? "Восстановить" : "В архив"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmDelete(true)}
+                    disabled={isSaving || isDeleting}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="mr-1.5 h-4 w-4" /> Удалить
+                  </Button>
+                </>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
+                Отмена
+              </Button>
+              <Button type="submit" disabled={!form.title?.trim() || isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Сохранить
+              </Button>
+            </div>
+          </DialogFooter>
+        </form>
       </DialogContent>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

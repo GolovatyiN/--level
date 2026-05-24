@@ -59,7 +59,7 @@ import {
   useUpdatePlanStatus,
 } from "@/hooks/usePlans";
 import { useUserMap } from "@/hooks/useUsers";
-import { useCanManage } from "@/hooks/useUserRole";
+import { useCanEditDirection, useCanManage } from "@/hooks/useUserRole";
 import { compareQuarters, STATUSES, quarterLabelRu } from "@/lib/constants";
 import { cn, isOverdue, taskTableClasses as tt } from "@/lib/utils";
 
@@ -77,7 +77,14 @@ export default function DepartmentDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  // canManage — admin/superadmin. Только они утверждают планы,
+  // возвращают на доработку, завершают и управляют отделом целиком.
   const canManage = useCanManage();
+  // canEdit — может ли пользователь редактировать данные внутри
+  // выбранного отдела (создавать планы, задачи, отправлять план на
+  // согласование). Включает admin + dept head + user_department_access
+  // edit/full.
+  const canEdit = useCanEditDirection(id);
 
   const { data: directions = [], isLoading: dirLoading } = useDirections();
   const { data: quarters = [] } = useQuarters();
@@ -323,7 +330,7 @@ export default function DepartmentDetail() {
             )}
           </div>
 
-          {canManage && (
+          {canEdit && (
             <Button size="sm" onClick={() => setCreatingTask(true)}>
               <Plus className="mr-1 h-4 w-4" /> Задача
             </Button>
@@ -370,6 +377,7 @@ export default function DepartmentDetail() {
           {quarterFilter !== "all" && (
             <PlanControls
               plan={selectedPlan}
+              canEdit={canEdit}
               canManage={canManage}
               targetQuarterLabel={targetQuarterForCreate?.label ?? quarterFilter}
               onTakeToWork={onTakeToWork}
@@ -407,7 +415,7 @@ export default function DepartmentDetail() {
           <TabsContent value="tasks" className="animate-fade-in">
             <TasksTab
               tasks={filteredTasks}
-              canEdit={canManage}
+              canEdit={canEdit}
               onEdit={setEditingTask}
               quarterFilter={quarterFilter}
             />
@@ -429,7 +437,7 @@ export default function DepartmentDetail() {
                 рендерим 8-блочную форму итогов прямо здесь.
                 Иначе — список итогов по кварталам. */}
             {quarterFilter !== "all" && selectedPlan ? (
-              <PlanOutcomesForm plan={selectedPlan} canEdit={canManage} />
+              <PlanOutcomesForm plan={selectedPlan} canEdit={canEdit} />
             ) : (
               <DeptSummaryTab
                 plans={deptPlans}
@@ -539,6 +547,7 @@ export default function DepartmentDetail() {
 
 function PlanControls({
   plan,
+  canEdit,
   canManage,
   targetQuarterLabel,
   onTakeToWork,
@@ -549,6 +558,9 @@ function PlanControls({
   onComplete,
 }: {
   plan: DepartmentPlan | null;
+  /** Может редактировать (admin OR head of dept OR edit-access). */
+  canEdit: boolean;
+  /** Только admin/superadmin — утверждение, доработка, завершение. */
   canManage: boolean;
   targetQuarterLabel: string;
   onTakeToWork: () => void;
@@ -559,14 +571,15 @@ function PlanControls({
   onComplete: () => void;
 }) {
   // Нет плана для выбранного квартала — кнопка «Взять в работу»
-  // создаёт новый план в статусе draft.
+  // создаёт новый план в статусе draft. Доступна руководителю отдела
+  // и админу (canEdit).
   if (!plan) {
     return (
       <div className="inline-flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-1.5 text-xs">
         <span className="text-muted-foreground">
           Плана на {targetQuarterLabel} пока нет.
         </span>
-        {canManage && (
+        {canEdit && (
           <Button size="sm" onClick={onTakeToWork} disabled={takingToWork}>
             {takingToWork && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
             Взять в работу
@@ -581,8 +594,9 @@ function PlanControls({
       <span className="text-xs text-muted-foreground">Статус плана:</span>
       <PlanStatusBadge status={plan.status} />
 
-      {/* Кнопки действий. Видим только то, что применимо к текущему статусу. */}
-      {(plan.status === "draft" || plan.status === "changes_requested") && (
+      {/* «Отправить на согласование» / «Отправить повторно» — это
+          действие руководителя отдела. Доступно canEdit. */}
+      {canEdit && (plan.status === "draft" || plan.status === "changes_requested") && (
         <Button size="sm" onClick={onSubmit}>
           <Send className="mr-1 h-3.5 w-3.5" />
           {plan.status === "changes_requested"
@@ -591,6 +605,7 @@ function PlanControls({
         </Button>
       )}
 
+      {/* «Утвердить» и «На доработку» — только админ. */}
       {canManage && plan.status === "on_review" && (
         <>
           <Button size="sm" onClick={onApprove}>
@@ -602,14 +617,16 @@ function PlanControls({
         </>
       )}
 
-      {(plan.status === "approved" ||
-        plan.status === "in_progress" ||
-        plan.status === "at_risk" ||
-        plan.status === "blocked") && (
-        <Button size="sm" variant="outline" onClick={onComplete}>
-          <Trophy className="mr-1 h-3.5 w-3.5" /> Завершить
-        </Button>
-      )}
+      {/* «Завершить» — только админ; руководитель отдела не завершает. */}
+      {canManage &&
+        (plan.status === "approved" ||
+          plan.status === "in_progress" ||
+          plan.status === "at_risk" ||
+          plan.status === "blocked") && (
+          <Button size="sm" variant="outline" onClick={onComplete}>
+            <Trophy className="mr-1 h-3.5 w-3.5" /> Завершить
+          </Button>
+        )}
 
       {plan.status === "completed" && (
         <span className="text-xs text-muted-foreground">только просмотр</span>
