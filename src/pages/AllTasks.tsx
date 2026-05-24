@@ -18,6 +18,7 @@ import {
 import { PriorityBadge } from "@/components/StatusBadge";
 import { TaskStatusSelect } from "@/components/TaskStatusSelect";
 import { TaskDialog } from "@/components/TaskDialog";
+import { InlineAssigneeEditor, InlineDirectionTagEditor } from "@/components/InlineTaskEditors";
 import { MultiSelectPopover, type MultiSelectOption } from "@/components/MultiSelectPopover";
 import { useDirections } from "@/hooks/useDirections";
 import { useTasks, type Task } from "@/hooks/useTasks";
@@ -371,6 +372,7 @@ export default function AllTasks() {
                 <TableRow>
                   <SortHead k="title"      label="Название"     align="left" />
                   <SortHead k="direction"  label="Отдел" />
+                  <TableHead className={tt.headLeft}>Направление</TableHead>
                   <SortHead k="quarter"    label="Квартал" />
                   <SortHead k="status"     label="Статус" />
                   <SortHead k="priority"   label="Приоритет" />
@@ -385,9 +387,6 @@ export default function AllTasks() {
               <TableBody>
                 {filtered.map((t) => {
                   const dir = dirById.get(t.direction_id ?? "");
-                  const assigneeName = t.assignee_id
-                    ? userMap.get(t.assignee_id) ?? null
-                    : t.assignee;
                   const overdue = isOverdue(t);
                   return (
                     <TableRow
@@ -421,6 +420,12 @@ export default function AllTasks() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
+                      <TableCell
+                        className={cn(tt.cellLeft, "whitespace-nowrap text-xs")}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <InlineDirectionTagEditor task={t} disabled={!canEdit} />
+                      </TableCell>
                       <TableCell className={cn(tt.cellCenter, "whitespace-nowrap text-xs text-muted-foreground tabular-nums")}>
                         {t.quarter ?? "—"}
                       </TableCell>
@@ -434,8 +439,11 @@ export default function AllTasks() {
                           <PriorityBadge priority={t.priority} />
                         </div>
                       </TableCell>
-                      <TableCell className={cn(tt.cellCenter, "whitespace-nowrap text-xs text-muted-foreground")}>
-                        {assigneeName ?? "—"}
+                      <TableCell
+                        className={cn(tt.cellCenter, "whitespace-nowrap text-xs text-muted-foreground")}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <InlineAssigneeEditor task={t} disabled={!canEdit} />
                       </TableCell>
                       <TableCell
                         className={cn(

@@ -31,6 +31,7 @@ import {
 import { MultiSelectPopover } from "@/components/MultiSelectPopover";
 import { PriorityBadge } from "@/components/StatusBadge";
 import { TaskStatusSelect } from "@/components/TaskStatusSelect";
+import { InlineAssigneeEditor, InlineDirectionTagEditor } from "@/components/InlineTaskEditors";
 import { isOverdue, taskTableClasses as tt } from "@/lib/utils";
 import { STATUSES } from "@/lib/constants";
 import {
@@ -553,6 +554,7 @@ function TasksTab({
           <TableHeader>
             <TableRow>
               <SortHead k="title"      label="Название"     align="left" />
+              <TableHead className={tt.headLeft}>Направление</TableHead>
               <SortHead k="status"     label="Статус" />
               <SortHead k="priority"   label="Приоритет" />
               <SortHead k="assignee"   label="Ответственный" />
@@ -565,9 +567,6 @@ function TasksTab({
           </TableHeader>
           <TableBody>
             {filtered.map((t) => {
-              const assigneeName = t.assignee_id
-                ? userMap.get(t.assignee_id) ?? null
-                : t.assignee;
               const overdue = isOverdue(t);
               return (
                 <TableRow
@@ -588,6 +587,12 @@ function TasksTab({
                       </div>
                     )}
                   </TableCell>
+                  <TableCell
+                    className={cn(tt.cellLeft, "whitespace-nowrap text-xs")}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <InlineDirectionTagEditor task={t} disabled={!canEdit} />
+                  </TableCell>
                   <TableCell className={tt.cellCenter}>
                     <div className="inline-flex">
                       <TaskStatusSelect task={t} disabled={!canEdit} />
@@ -598,8 +603,11 @@ function TasksTab({
                       <PriorityBadge priority={t.priority} />
                     </div>
                   </TableCell>
-                  <TableCell className={cn(tt.cellCenter, "text-sm text-muted-foreground")}>
-                    {assigneeName ?? "—"}
+                  <TableCell
+                    className={cn(tt.cellCenter, "text-sm text-muted-foreground")}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <InlineAssigneeEditor task={t} disabled={!canEdit} />
                   </TableCell>
                   <TableCell
                     className={cn(

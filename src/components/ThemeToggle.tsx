@@ -7,9 +7,14 @@ import { cn } from "@/lib/utils";
 interface Props {
   className?: string;
   variant?: "ghost" | "outline";
+  /**
+   * Когда true — рендерим без текстовой подписи, только Sun/Moon иконку.
+   * Используется в свёрнутом сайдбаре, чтобы не вытекать за w-14.
+   */
+  compact?: boolean;
 }
 
-export function ThemeToggle({ className, variant = "ghost" }: Props) {
+export function ThemeToggle({ className, variant = "ghost", compact = false }: Props) {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -26,7 +31,11 @@ export function ThemeToggle({ className, variant = "ghost" }: Props) {
       onClick={() => setTheme(next)}
       aria-label={`Переключить тему на ${next === "dark" ? "тёмную" : "светлую"}`}
       title={`Тема: ${current === "dark" ? "Тёмная" : "Светлая"}`}
-      className={cn("group w-full justify-start gap-2 text-muted-foreground", className)}
+      className={cn(
+        "group w-full text-muted-foreground",
+        compact ? "justify-center px-0" : "justify-start gap-2",
+        className,
+      )}
     >
       <span className="relative inline-flex h-4 w-4 items-center justify-center">
         {/* Cross-fade + rotate between Sun and Moon */}
@@ -47,7 +56,9 @@ export function ThemeToggle({ className, variant = "ghost" }: Props) {
           )}
         />
       </span>
-      <span>{current === "dark" ? "Светлая тема" : "Тёмная тема"}</span>
+      {!compact && (
+        <span>{current === "dark" ? "Светлая тема" : "Тёмная тема"}</span>
+      )}
     </Button>
   );
 }

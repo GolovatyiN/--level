@@ -216,10 +216,10 @@ export function AppLayout() {
             {!compact && <span className="font-medium">{overdueCount} просрочено</span>}
           </button>
         )}
-        <NotificationsBell />
-        <ThemeToggle />
+        <NotificationsBell compact={compact} />
+        <ThemeToggle compact={compact} />
         <div className="pt-1">
-          <UserMenu />
+          <UserMenu compact={compact} />
         </div>
         {/* Кнопка свернуть/развернуть — только desktop */}
         <Button

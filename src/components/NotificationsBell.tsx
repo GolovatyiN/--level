@@ -59,7 +59,16 @@ function entityLink(n: Notification): string | null {
   return null;
 }
 
-export function NotificationsBell() {
+interface NotificationsBellProps {
+  /**
+   * Когда true — рендерим только иконку с бейджем, без текстовой подписи.
+   * Используется в свёрнутом сайдбаре (`w-14`), где надпись «Уведомления»
+   * не помещается и вытекает наружу.
+   */
+  compact?: boolean;
+}
+
+export function NotificationsBell({ compact = false }: NotificationsBellProps = {}) {
   const [open, setOpen] = useState(false);
   const { data: items = [], isLoading } = useNotifications();
   const unread = useUnreadCount();
@@ -84,8 +93,12 @@ export function NotificationsBell() {
         <Button
           variant="ghost"
           size="sm"
-          className="relative w-full justify-start gap-2 text-muted-foreground"
+          className={cn(
+            "relative w-full text-muted-foreground",
+            compact ? "justify-center px-0" : "justify-start gap-2",
+          )}
           aria-label={unread > 0 ? `${unread} непрочитанных уведомлений` : "Уведомления"}
+          title={compact ? (unread > 0 ? `Уведомления (${unread})` : "Уведомления") : undefined}
         >
           <span className="relative inline-flex">
             <Bell className="h-4 w-4" />
@@ -95,11 +108,15 @@ export function NotificationsBell() {
               </span>
             )}
           </span>
-          <span>Уведомления</span>
-          {unread > 0 && (
-            <span className="ml-auto rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
-              {unread}
-            </span>
+          {!compact && (
+            <>
+              <span>Уведомления</span>
+              {unread > 0 && (
+                <span className="ml-auto rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
+                  {unread}
+                </span>
+              )}
+            </>
           )}
         </Button>
       </PopoverTrigger>
