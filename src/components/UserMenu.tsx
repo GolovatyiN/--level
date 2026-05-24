@@ -13,12 +13,20 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
+interface UserMenuProps {
+  /**
+   * Когда true — рендерим только аватар, без имени и email рядом.
+   * Используется в свёрнутом сайдбаре (w-14), где надписи вылезают.
+   */
+  compact?: boolean;
+}
+
 /**
  * Сайдбарный аватар + dropdown с пунктами «Мой профиль» и «Выйти».
  * Имя и инициалы подтягиваются из profiles.display_name (с фолбэком на
  * email).
  */
-export function UserMenu() {
+export function UserMenu({ compact = false }: UserMenuProps = {}) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -59,21 +67,26 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
+          title={compact ? name : undefined}
+          aria-label={compact ? name : undefined}
           className={cn(
-            "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "group flex w-full items-center rounded-md text-left transition-colors hover:bg-sidebar-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            compact ? "justify-center px-0 py-1.5" : "gap-2 px-2 py-1.5",
           )}
         >
           <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-semibold text-background">
             {initials || <UserIcon className="h-3.5 w-3.5" />}
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-xs font-medium text-sidebar-foreground">
-              {name}
+          {!compact && (
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-medium text-sidebar-foreground">
+                {name}
+              </span>
+              <span className="block truncate text-[10px] text-muted-foreground">
+                {user.email}
+              </span>
             </span>
-            <span className="block truncate text-[10px] text-muted-foreground">
-              {user.email}
-            </span>
-          </span>
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" className="w-56">

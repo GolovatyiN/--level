@@ -43,6 +43,7 @@ import { PlanOutcomesForm } from "@/components/PlanOutcomesForm";
 import { PlanHistoryTimeline } from "@/components/PlanHistoryTimeline";
 import { TaskStatusSelect } from "@/components/TaskStatusSelect";
 import { TaskDialog } from "@/components/TaskDialog";
+import { InlineAssigneeEditor, InlineDirectionTagEditor } from "@/components/InlineTaskEditors";
 import { MultiSelectPopover } from "@/components/MultiSelectPopover";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDirections } from "@/hooks/useDirections";
@@ -822,9 +823,6 @@ function TasksTab({
           </TableHeader>
           <TableBody>
             {filtered.map((t) => {
-              const assigneeName = t.assignee_id
-                ? userMap.get(t.assignee_id) ?? null
-                : t.assignee;
               const overdue = isOverdue(t);
               return (
                 <TableRow
@@ -847,14 +845,11 @@ function TasksTab({
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className={cn(tt.cellLeft, "whitespace-nowrap text-xs")}>
-                    {t.direction_tag ? (
-                      <span className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground">
-                        {t.direction_tag}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
+                  <TableCell
+                    className={cn(tt.cellLeft, "whitespace-nowrap text-xs")}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <InlineDirectionTagEditor task={t} disabled={!canEdit} />
                   </TableCell>
                   <TableCell className={cn(tt.cellCenter, "whitespace-nowrap text-xs text-muted-foreground tabular-nums")}>
                     {t.quarter ?? "—"}
@@ -869,8 +864,11 @@ function TasksTab({
                       <PriorityBadge priority={t.priority} />
                     </div>
                   </TableCell>
-                  <TableCell className={cn(tt.cellCenter, "whitespace-nowrap text-xs text-muted-foreground")}>
-                    {assigneeName ?? "—"}
+                  <TableCell
+                    className={cn(tt.cellCenter, "whitespace-nowrap text-xs text-muted-foreground")}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <InlineAssigneeEditor task={t} disabled={!canEdit} />
                   </TableCell>
                   <TableCell
                     className={cn(
