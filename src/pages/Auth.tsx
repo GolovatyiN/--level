@@ -44,11 +44,30 @@ export default function Auth() {
 
     setSubmitting(true);
     try {
-      const { error: err } = await supabase.auth.signInWithPassword({
+      const { data: signIn, error: err } = await supabase.auth.signInWithPassword({
         email: trimmedEmail,
         password,
       });
       if (err) throw err;
+
+      // Доп-проверка: если профиль пользователя помечен как is_active=false —
+      // сразу разлогиниваемся, не пускаем на дашборд. RLS всё равно режет
+      // запросы, но UX лучше когда отказ виден на форме входа.
+      const userId = signIn?.user?.id;
+      if (userId) {
+        const { data: prof } = await supabase
+          .from("profiles" as any)
+          .select("is_active")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (prof && (prof as any).is_active === false) {
+          await supabase.auth.signOut();
+          throw new Error(
+            "Аккаунт отключён администратором. Обратитесь к администратору.",
+          );
+        }
+      }
+
       navigate(redirectTo, { replace: true });
     } catch (err: any) {
       const msg = err?.message ?? "Не удалось войти";

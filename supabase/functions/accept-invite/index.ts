@@ -67,6 +67,43 @@ Deno.serve(async (req) => {
       return json({ error: "Срок действия ссылки истёк" }, 410);
     }
 
+    // 1b. Проверяем что пользователь, на которого этот invite, всё ещё
+    // существует и активен. Если его удалили — invite автоматически
+    // удалится по FK CASCADE, но защищаемся на случай race-condition.
+    // Если деактивирован — отказываем явно.
+    const { data: targetUser, error: userErr } = await admin.auth.admin.getUserById(
+      invite.user_id,
+    );
+    if (userErr || !targetUser?.user) {
+      return json({ error: "Пользователь не найден или доступ был отозван" }, 410);
+    }
+    // Email должен совпадать: invite создавался под конкретный email,
+    // и если у юзера в auth.users теперь другой email — отказываем.
+    const inviteEmail = invite.email?.toLowerCase().trim() ?? "";
+    const userEmail = targetUser.user.email?.toLowerCase().trim() ?? "";
+    if (inviteEmail && userEmail && inviteEmail !== userEmail) {
+      return json(
+        { error: "Email пользователя не совпадает с приглашением. Доступ запрещён." },
+        403,
+      );
+    }
+    const { data: targetProfile } = await admin
+      .from("profiles")
+      .select("is_active")
+      .eq("user_id", invite.user_id)
+      .maybeSingle();
+    if (targetProfile && targetProfile.is_active === false) {
+      // Активный invite на отключённого пользователя — отзываем сразу.
+      await admin
+        .from("invites")
+        .update({ used_at: new Date().toISOString() })
+        .eq("id", inviteId);
+      return json(
+        { error: "Аккаунт отключён администратором. Обратитесь к администратору." },
+        403,
+      );
+    }
+
     // 2. Set the password (and display_name if provided).
     const { error: updErr } = await admin.auth.admin.updateUserById(invite.user_id, {
       password,
