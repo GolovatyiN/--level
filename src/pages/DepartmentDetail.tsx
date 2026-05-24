@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import {
   ArrowLeft,
@@ -39,12 +39,14 @@ import {
 import { PageLoader } from "@/components/UiState";
 import { PriorityBadge } from "@/components/StatusBadge";
 import { PlanStatusBadge } from "@/components/PlanStatusBadge";
+import { PlanOutcomesForm } from "@/components/PlanOutcomesForm";
 import { TaskStatusSelect } from "@/components/TaskStatusSelect";
 import { TaskDialog } from "@/components/TaskDialog";
 import { MultiSelectPopover } from "@/components/MultiSelectPopover";
 import { useDirections } from "@/hooks/useDirections";
 import { useQuarters } from "@/hooks/useTaxonomies";
-import { useTasks, type Task } from "@/hooks/useTasks";
+import { useTasks, useUpdateTask, type Task } from "@/hooks/useTasks";
+import { toast } from "sonner";
 import {
   type DepartmentPlan,
   type DepartmentPlanStats,
@@ -72,6 +74,7 @@ import { cn, isOverdue, taskTableClasses as tt } from "@/lib/utils";
 export default function DepartmentDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const canManage = useCanManage();
 
   const { data: directions = [], isLoading: dirLoading } = useDirections();
@@ -83,8 +86,26 @@ export default function DepartmentDetail() {
 
   // Q1 / Q2 / Q3 / Q4 (по префиксу label) для фильтра. Год хранить не
   // нужно — пользователь выбирает «квартал по номеру».
-  const [quarterFilter, setQuarterFilter] = useState<"all" | "Q1" | "Q2" | "Q3" | "Q4">("all");
-  const [tab, setTab] = useState("tasks");
+  // Квартал и активная вкладка — синхронизируются с URL, чтобы дашборд
+  // мог глубоко линковаться, например /departments/<id>?quarter=Q3&tab=tasks.
+  const quarterFilter = useMemo<"all" | "Q1" | "Q2" | "Q3" | "Q4">(() => {
+    const raw = searchParams.get("quarter")?.toUpperCase() ?? "all";
+    return (["Q1", "Q2", "Q3", "Q4"].includes(raw) ? raw : "all") as any;
+  }, [searchParams]);
+  const tab = useMemo(() => {
+    const raw = searchParams.get("tab") ?? "tasks";
+    return ["tasks", "comments", "history", "summary"].includes(raw) ? raw : "tasks";
+  }, [searchParams]);
+
+  const setUrlParam = (key: string, value: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === null || value === "" || value === "all" || value === "tasks") next.delete(key);
+    else next.set(key, value);
+    setSearchParams(next, { replace: true });
+  };
+
+  const setQuarterFilter = (v: "all" | "Q1" | "Q2" | "Q3" | "Q4") => setUrlParam("quarter", v);
+  const setTab = (v: string) => setUrlParam("tab", v);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [creatingTask, setCreatingTask] = useState(false);
   // Plan action: модалка с подтверждением + (опционально) обязательный
@@ -190,9 +211,38 @@ export default function DepartmentDetail() {
       .catch(() => null);
   };
 
-  // Открыть модалку нужного действия. В большинстве случаев — с
-  // обязательным или опциональным комментарием.
+  // Сколько задач в этом плане имеют замечание-комментарий.
+  // Используется для валидации «На доработку».
+  const tasksWithRemark = useMemo(
+    () => filteredTasks.filter((t) => !!t.latest_remark?.trim()).length,
+    [filteredTasks],
+  );
+
+  // Есть ли заполненные итоги. Если хоть одно поле непустое — считаем
+  // что итоги есть; для confirmation modal при «Завершить».
+  const hasFilledOutcomes = useMemo(() => {
+    if (!selectedPlan) return false;
+    return [
+      selectedPlan.outcome_planned,
+      selectedPlan.outcome_done,
+      selectedPlan.outcome_not_done,
+      selectedPlan.outcome_not_done_reason,
+      selectedPlan.outcome_achievements,
+      selectedPlan.outcome_problems,
+      selectedPlan.outcome_conclusions,
+      selectedPlan.outcome_next_quarter,
+    ].some((v) => !!v?.trim());
+  }, [selectedPlan]);
+
+  // Открыть модалку нужного действия. «На доработку» сначала проверяет,
+  // есть ли замечания по задачам — без них отправка лишена смысла.
   const openAction = (kind: NonNullable<typeof planAction>) => {
+    if (kind === "request_changes" && tasksWithRemark === 0) {
+      toast.error(
+        "Добавьте замечание хотя бы к одной задаче (колонка «Комментарий»), чтобы отправить план на доработку.",
+      );
+      return;
+    }
     setPlanAction(kind);
     setActionComment("");
   };
@@ -203,15 +253,13 @@ export default function DepartmentDetail() {
       status: PlanStatus;
       kind?: any;
       is_final?: boolean;
-      required?: boolean;
     }> = {
       submit:          { status: "on_review",         kind: "submit" },
       approve:         { status: "approved",          kind: "approve" },
-      request_changes: { status: "changes_requested", kind: "request_changes", required: true },
-      complete:        { status: "completed",         kind: "final_review",    is_final: true, required: true },
+      request_changes: { status: "changes_requested", kind: "request_changes" },
+      complete:        { status: "completed",         kind: "final_review",   is_final: true },
     };
     const cfg = map[planAction];
-    if (cfg.required && actionComment.trim().length === 0) return;
     await updateStatus
       .mutateAsync({
         plan_id: selectedPlan.id,
@@ -369,12 +417,19 @@ export default function DepartmentDetail() {
             <DeptHistoryTab plans={deptPlans} />
           </TabsContent>
           <TabsContent value="summary" className="animate-fade-in">
-            <DeptSummaryTab
-              plans={deptPlans}
-              quarters={deptQuarters}
-              statsByPlan={planStats}
-              direction={direction}
-            />
+            {/* Если выбран конкретный квартал и план существует —
+                рендерим 8-блочную форму итогов прямо здесь.
+                Иначе — список итогов по кварталам. */}
+            {quarterFilter !== "all" && selectedPlan ? (
+              <PlanOutcomesForm plan={selectedPlan} canEdit={canManage} />
+            ) : (
+              <DeptSummaryTab
+                plans={deptPlans}
+                quarters={deptQuarters}
+                statsByPlan={planStats}
+                direction={direction}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -392,54 +447,76 @@ export default function DepartmentDetail() {
         } as any}
       />
 
-      {/* Plan-action dialog: подтверждение + (опционально) обязательный
-          комментарий. После submit useUpdatePlanStatus сам разошлёт
-          уведомления, обновит history и инвалидирует кэш. */}
+      {/* Plan-action dialog. Лёгкий confirmation с опциональным
+          комментарием. Итоги квартала редактируются на вкладке «Итоги»,
+          а не в этом модале. После submit useUpdatePlanStatus сам
+          разошлёт уведомления, обновит history и инвалидирует кэш. */}
       <AlertDialog open={!!planAction} onOpenChange={(v) => !v && setPlanAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {planAction === "submit" && "Отправить на согласование?"}
               {planAction === "approve" && "Утвердить квартал?"}
-              {planAction === "request_changes" && "Вернуть на доработку"}
-              {planAction === "complete" && "Завершить квартал"}
+              {planAction === "request_changes" && "Вернуть на доработку?"}
+              {planAction === "complete" && "Завершить квартал?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {planAction === "submit" && "Супер-админ и админы получат уведомление о согласовании."}
               {planAction === "approve" && "Руководитель отдела получит уведомление об утверждении."}
-              {planAction === "request_changes" && "Опишите, что нужно поправить — комментарий обязателен."}
-              {planAction === "complete" && "Добавьте итог квартала — что выполнено, что нет, выводы."}
+              {planAction === "request_changes" && (
+                <>
+                  Замечания по задачам уже сохранены ({tasksWithRemark}{" "}
+                  {tasksWithRemark === 1 ? "задача" : tasksWithRemark < 5 ? "задачи" : "задач"}).
+                  Они станут видны руководителю отдела, и план получит статус «На доработке».
+                </>
+              )}
+              {planAction === "complete" &&
+                (hasFilledOutcomes
+                  ? "Итоги уже заполнены на вкладке «Итоги». План будет помечен как завершённый."
+                  : "Итоги квартала ещё не заполнены. Можно завершить план без них или сначала перейти к вкладке «Итоги».")}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Textarea
-            autoFocus
-            value={actionComment}
-            onChange={(e) => setActionComment(e.target.value)}
-            rows={4}
-            placeholder={
-              planAction === "request_changes"
-                ? "Что нужно доработать..."
-                : planAction === "complete"
-                  ? "Итоги квартала: выполненное, не выполненное, причины, выводы..."
-                  : "Комментарий (необязательно)..."
-            }
-            className="mt-2"
-          />
+
+          {/* Короткий комментарий-подтверждение — необязательный, только
+              для «Submit» / «Approve». Для «Request changes» и «Complete»
+              комментарий не нужен — данные уже на вкладках «Задачи» /
+              «Итоги» соответственно. */}
+          {(planAction === "submit" || planAction === "approve") && (
+            <Textarea
+              autoFocus
+              value={actionComment}
+              onChange={(e) => setActionComment(e.target.value)}
+              rows={3}
+              placeholder="Комментарий (необязательно)..."
+              className="mt-2"
+            />
+          )}
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={updateStatus.isPending}>Отмена</AlertDialogCancel>
+            {planAction === "complete" && !hasFilledOutcomes && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPlanAction(null);
+                  setTab("summary");
+                }}
+                disabled={updateStatus.isPending}
+              >
+                Перейти к итогам
+              </Button>
+            )}
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
                 runAction();
               }}
-              disabled={
-                updateStatus.isPending ||
-                ((planAction === "request_changes" || planAction === "complete") &&
-                  actionComment.trim().length === 0)
-              }
+              disabled={updateStatus.isPending}
             >
               {updateStatus.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Подтвердить
+              {planAction === "complete" && !hasFilledOutcomes
+                ? "Завершить без итогов"
+                : "Подтвердить"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -764,9 +841,9 @@ function TasksTab({
                   </TableCell>
                   <TableCell
                     className={cn(tt.cellLeft, "max-w-[200px] text-xs text-muted-foreground")}
-                    title={t.latest_remark ?? undefined}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="truncate">{t.latest_remark ?? "—"}</div>
+                    <RemarkEditor task={t} disabled={!canEdit} />
                   </TableCell>
                   <TableCell
                     className={cn(tt.cellLeft, "max-w-[200px] text-xs text-muted-foreground")}
@@ -787,6 +864,76 @@ function TasksTab({
         </Table>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// RemarkEditor — инлайн-edit поля latest_remark прямо в таблице
+// ---------------------------------------------------------------------------
+
+function RemarkEditor({ task, disabled }: { task: Task; disabled: boolean }) {
+  const update = useUpdateTask();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(task.latest_remark ?? "");
+
+  // Если кто-то меняет задачу из другого места (модалка, статус-смена) —
+  // подтягиваем актуальное значение в state.
+  useEffect(() => {
+    if (!editing) setValue(task.latest_remark ?? "");
+  }, [task.latest_remark, editing]);
+
+  const save = () => {
+    const trimmed = value.trim();
+    const current = task.latest_remark ?? "";
+    if (trimmed !== current) {
+      update.mutate({
+        id: task.id,
+        patch: { latest_remark: trimmed || null },
+        prev: task,
+      });
+    }
+    setEditing(false);
+  };
+
+  if (disabled) {
+    return <div className="truncate" title={task.latest_remark ?? undefined}>{task.latest_remark ?? "—"}</div>;
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="block w-full min-w-0 truncate text-left transition-colors hover:text-foreground"
+        title={task.latest_remark ?? "Кликните, чтобы добавить замечание"}
+      >
+        {task.latest_remark || (
+          <span className="text-muted-foreground/60 italic">добавить замечание</span>
+        )}
+      </button>
+    );
+  }
+
+  return (
+    <Textarea
+      autoFocus
+      rows={2}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault();
+          save();
+        }
+        if (e.key === "Escape") {
+          setValue(task.latest_remark ?? "");
+          setEditing(false);
+        }
+      }}
+      placeholder="Замечание руководителя..."
+      className="min-h-[3rem] text-xs"
+    />
   );
 }
 
