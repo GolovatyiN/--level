@@ -5,14 +5,29 @@ import {
   ArrowLeft,
   CheckCircle2,
   History as HistoryIcon,
+  Loader2,
   MessageSquare,
   Plus,
+  RefreshCcw,
+  Send,
+  ShieldCheck,
   Trophy,
 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -30,7 +45,15 @@ import { MultiSelectPopover } from "@/components/MultiSelectPopover";
 import { useDirections } from "@/hooks/useDirections";
 import { useQuarters } from "@/hooks/useTaxonomies";
 import { useTasks, type Task } from "@/hooks/useTasks";
-import { usePlans, usePlanStats, type DepartmentPlanStats } from "@/hooks/usePlans";
+import {
+  type DepartmentPlan,
+  type DepartmentPlanStats,
+  type PlanStatus,
+  useCreatePlan,
+  usePlans,
+  usePlanStats,
+  useUpdatePlanStatus,
+} from "@/hooks/usePlans";
 import { useUserMap } from "@/hooks/useUsers";
 import { useCanManage } from "@/hooks/useUserRole";
 import { compareQuarters, STATUSES, quarterLabelRu } from "@/lib/constants";
@@ -64,6 +87,13 @@ export default function DepartmentDetail() {
   const [tab, setTab] = useState("tasks");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [creatingTask, setCreatingTask] = useState(false);
+  // Plan action: модалка с подтверждением + (опционально) обязательный
+  // комментарий-замечание. См. блок PlanControls ниже.
+  const [planAction, setPlanAction] = useState<null | "submit" | "approve" | "request_changes" | "complete">(null);
+  const [actionComment, setActionComment] = useState("");
+
+  const createPlan = useCreatePlan();
+  const updateStatus = useUpdatePlanStatus();
 
   const direction = useMemo(
     () => directions.find((d) => d.id === id) ?? null,
@@ -101,6 +131,39 @@ export default function DepartmentDetail() {
     return deptTasks.filter((t) => t.quarter?.startsWith(quarterFilter + " "));
   }, [deptTasks, quarterFilter]);
 
+  // Если выбран конкретный квартал — находим план отдела для этого квартала,
+  // чтобы показать рядом статус и кнопки действий (отправить на согласование,
+  // утвердить и т.д.). Если планов несколько (например Q1 2025 и Q1 2026) —
+  // берём самый свежий по created_at.
+  const selectedPlan = useMemo<DepartmentPlan | null>(() => {
+    if (quarterFilter === "all") return null;
+    const matchingQuarterIds = new Set(
+      quarters
+        .filter((q) => q.label.toUpperCase().startsWith(quarterFilter + " "))
+        .map((q) => q.id),
+    );
+    const candidates = deptPlans.filter((p) => matchingQuarterIds.has(p.quarter_id));
+    if (candidates.length === 0) return null;
+    return [...candidates].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )[0];
+  }, [quarterFilter, quarters, deptPlans]);
+
+  // Если плана для выбранного Q ещё нет — на какой именно quarter_id
+  // (год) создать новый. Берём первый квартал по сортировке, у которого
+  // префикс совпадает и для отдела нет плана.
+  const targetQuarterForCreate = useMemo(() => {
+    if (quarterFilter === "all") return null;
+    const candidates = quarters
+      .filter((q) => q.label.toUpperCase().startsWith(quarterFilter + " "))
+      .sort((a, b) => (a.sort_key ?? a.label).localeCompare(b.sort_key ?? b.label));
+    return (
+      candidates.find((q) => !deptPlans.some((p) => p.quarter_id === q.id)) ??
+      candidates[0] ??
+      null
+    );
+  }, [quarterFilter, quarters, deptPlans]);
+
   // Stats по выбранному скоупу.
   const stats = useMemo(() => {
     const total = filteredTasks.length;
@@ -113,6 +176,53 @@ export default function DepartmentDetail() {
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { total, completed, inProgress, atRisk, onReview, needsRevision, overdue, progress };
   }, [filteredTasks]);
+
+  // Создание плана «Взять в работу» — пишет план в статус draft и
+  // обновляет deptPlans через инвалидацию useQuery.
+  const onTakeToWork = async () => {
+    if (!targetQuarterForCreate || !direction) return;
+    await createPlan
+      .mutateAsync({
+        direction_id: direction.id,
+        quarter_id: targetQuarterForCreate.id,
+        description: null,
+      })
+      .catch(() => null);
+  };
+
+  // Открыть модалку нужного действия. В большинстве случаев — с
+  // обязательным или опциональным комментарием.
+  const openAction = (kind: NonNullable<typeof planAction>) => {
+    setPlanAction(kind);
+    setActionComment("");
+  };
+
+  const runAction = async () => {
+    if (!planAction || !selectedPlan) return;
+    const map: Record<NonNullable<typeof planAction>, {
+      status: PlanStatus;
+      kind?: any;
+      is_final?: boolean;
+      required?: boolean;
+    }> = {
+      submit:          { status: "on_review",         kind: "submit" },
+      approve:         { status: "approved",          kind: "approve" },
+      request_changes: { status: "changes_requested", kind: "request_changes", required: true },
+      complete:        { status: "completed",         kind: "final_review",    is_final: true, required: true },
+    };
+    const cfg = map[planAction];
+    if (cfg.required && actionComment.trim().length === 0) return;
+    await updateStatus
+      .mutateAsync({
+        plan_id: selectedPlan.id,
+        status: cfg.status,
+        comment: actionComment.trim() || undefined,
+        kind: cfg.kind,
+        is_final: cfg.is_final,
+      })
+      .catch(() => {});
+    setPlanAction(null);
+  };
 
   if (dirLoading) return <PageLoader />;
   if (!direction) {
@@ -186,23 +296,40 @@ export default function DepartmentDetail() {
           />
         </div>
 
-        {/* Quarter filter */}
-        <div className="mt-4 inline-flex flex-wrap items-center gap-1 rounded-lg border border-border bg-card p-1">
-          {(["all", "Q1", "Q2", "Q3", "Q4"] as const).map((q) => (
-            <button
-              key={q}
-              type="button"
-              onClick={() => setQuarterFilter(q)}
-              className={cn(
-                "h-7 rounded px-3 text-xs font-medium transition-colors",
-                quarterFilter === q
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {q === "all" ? "Все кварталы" : q}
-            </button>
-          ))}
+        {/* Quarter filter + plan controls для выбранного квартала */}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-border bg-card p-1">
+            {(["all", "Q1", "Q2", "Q3", "Q4"] as const).map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => setQuarterFilter(q)}
+                className={cn(
+                  "h-7 rounded px-3 text-xs font-medium transition-colors",
+                  quarterFilter === q
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {q === "all" ? "Все кварталы" : q}
+              </button>
+            ))}
+          </div>
+
+          {/* Plan controls — действия по выбранному кварталу */}
+          {quarterFilter !== "all" && (
+            <PlanControls
+              plan={selectedPlan}
+              canManage={canManage}
+              targetQuarterLabel={targetQuarterForCreate?.label ?? quarterFilter}
+              onTakeToWork={onTakeToWork}
+              takingToWork={createPlan.isPending}
+              onSubmit={() => openAction("submit")}
+              onApprove={() => openAction("approve")}
+              onRequestChanges={() => openAction("request_changes")}
+              onComplete={() => openAction("complete")}
+            />
+          )}
         </div>
       </div>
 
@@ -264,7 +391,145 @@ export default function DepartmentDetail() {
           direction_id: direction.id,
         } as any}
       />
+
+      {/* Plan-action dialog: подтверждение + (опционально) обязательный
+          комментарий. После submit useUpdatePlanStatus сам разошлёт
+          уведомления, обновит history и инвалидирует кэш. */}
+      <AlertDialog open={!!planAction} onOpenChange={(v) => !v && setPlanAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {planAction === "submit" && "Отправить на согласование?"}
+              {planAction === "approve" && "Утвердить квартал?"}
+              {planAction === "request_changes" && "Вернуть на доработку"}
+              {planAction === "complete" && "Завершить квартал"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {planAction === "submit" && "Супер-админ и админы получат уведомление о согласовании."}
+              {planAction === "approve" && "Руководитель отдела получит уведомление об утверждении."}
+              {planAction === "request_changes" && "Опишите, что нужно поправить — комментарий обязателен."}
+              {planAction === "complete" && "Добавьте итог квартала — что выполнено, что нет, выводы."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            autoFocus
+            value={actionComment}
+            onChange={(e) => setActionComment(e.target.value)}
+            rows={4}
+            placeholder={
+              planAction === "request_changes"
+                ? "Что нужно доработать..."
+                : planAction === "complete"
+                  ? "Итоги квартала: выполненное, не выполненное, причины, выводы..."
+                  : "Комментарий (необязательно)..."
+            }
+            className="mt-2"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateStatus.isPending}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                runAction();
+              }}
+              disabled={
+                updateStatus.isPending ||
+                ((planAction === "request_changes" || planAction === "complete") &&
+                  actionComment.trim().length === 0)
+              }
+            >
+              {updateStatus.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Подтвердить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Plan controls — кнопки действий по выбранному кварталу
+// ---------------------------------------------------------------------------
+
+function PlanControls({
+  plan,
+  canManage,
+  targetQuarterLabel,
+  onTakeToWork,
+  takingToWork,
+  onSubmit,
+  onApprove,
+  onRequestChanges,
+  onComplete,
+}: {
+  plan: DepartmentPlan | null;
+  canManage: boolean;
+  targetQuarterLabel: string;
+  onTakeToWork: () => void;
+  takingToWork: boolean;
+  onSubmit: () => void;
+  onApprove: () => void;
+  onRequestChanges: () => void;
+  onComplete: () => void;
+}) {
+  // Нет плана для выбранного квартала — кнопка «Взять в работу»
+  // создаёт новый план в статусе draft.
+  if (!plan) {
+    return (
+      <div className="inline-flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-1.5 text-xs">
+        <span className="text-muted-foreground">
+          Плана на {targetQuarterLabel} пока нет.
+        </span>
+        {canManage && (
+          <Button size="sm" onClick={onTakeToWork} disabled={takingToWork}>
+            {takingToWork && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+            Взять в работу
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5">
+      <span className="text-xs text-muted-foreground">Статус плана:</span>
+      <PlanStatusBadge status={plan.status} />
+
+      {/* Кнопки действий. Видим только то, что применимо к текущему статусу. */}
+      {(plan.status === "draft" || plan.status === "changes_requested") && (
+        <Button size="sm" onClick={onSubmit}>
+          <Send className="mr-1 h-3.5 w-3.5" />
+          {plan.status === "changes_requested"
+            ? "Отправить повторно"
+            : "Отправить на согласование"}
+        </Button>
+      )}
+
+      {canManage && plan.status === "on_review" && (
+        <>
+          <Button size="sm" onClick={onApprove}>
+            <ShieldCheck className="mr-1 h-3.5 w-3.5" /> Утвердить
+          </Button>
+          <Button size="sm" variant="outline" onClick={onRequestChanges}>
+            <RefreshCcw className="mr-1 h-3.5 w-3.5" /> На доработку
+          </Button>
+        </>
+      )}
+
+      {(plan.status === "approved" ||
+        plan.status === "in_progress" ||
+        plan.status === "at_risk" ||
+        plan.status === "blocked") && (
+        <Button size="sm" variant="outline" onClick={onComplete}>
+          <Trophy className="mr-1 h-3.5 w-3.5" /> Завершить
+        </Button>
+      )}
+
+      {plan.status === "completed" && (
+        <span className="text-xs text-muted-foreground">только просмотр</span>
+      )}
+    </div>
   );
 }
 
