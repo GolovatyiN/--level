@@ -808,6 +808,7 @@ function TasksTab({
           <TableHeader>
             <TableRow>
               <SortHead k="title"      label="Название"     align="left" />
+              <TableHead className={tt.headLeft}>Направление</TableHead>
               <SortHead k="quarter"    label="Квартал" />
               <SortHead k="status"     label="Статус" />
               <SortHead k="priority"   label="Приоритет" />
@@ -831,12 +832,28 @@ function TasksTab({
                   className="cursor-pointer hover:bg-muted/40"
                   onClick={() => onEdit(t)}
                 >
-                  <TableCell className={cn(tt.cellLeft, "max-w-[260px]")}>
-                    <div className="truncate font-medium" title={t.title}>{t.title}</div>
+                  <TableCell className={cn(tt.cellLeft, "min-w-[260px] max-w-[440px]")}>
+                    {/* Длинные названия задач теперь переносятся по словам,
+                        а не обрезаются (раньше truncate скрывал хвост). */}
+                    <div className="whitespace-normal break-words font-medium" title={t.title}>
+                      {t.title}
+                    </div>
                     {t.description && (
-                      <div className="truncate text-xs text-muted-foreground" title={t.description}>
+                      <div
+                        className="line-clamp-2 whitespace-normal break-words text-xs text-muted-foreground"
+                        title={t.description}
+                      >
                         {t.description}
                       </div>
+                    )}
+                  </TableCell>
+                  <TableCell className={cn(tt.cellLeft, "whitespace-nowrap text-xs")}>
+                    {t.direction_tag ? (
+                      <span className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+                        {t.direction_tag}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </TableCell>
                   <TableCell className={cn(tt.cellCenter, "whitespace-nowrap text-xs text-muted-foreground tabular-nums")}>

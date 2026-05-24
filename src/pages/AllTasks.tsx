@@ -395,10 +395,15 @@ export default function AllTasks() {
                       className="cursor-pointer hover:bg-muted/40"
                       onClick={() => setEditingTask(t)}
                     >
-                      <TableCell className={cn(tt.cellLeft, "max-w-[260px]")}>
-                        <div className="truncate font-medium" title={t.title}>{t.title}</div>
+                      <TableCell className={cn(tt.cellLeft, "min-w-[260px] max-w-[440px]")}>
+                        <div className="whitespace-normal break-words font-medium" title={t.title}>
+                          {t.title}
+                        </div>
                         {t.description && (
-                          <div className="truncate text-xs text-muted-foreground" title={t.description}>
+                          <div
+                            className="line-clamp-2 whitespace-normal break-words text-xs text-muted-foreground"
+                            title={t.description}
+                          >
                             {t.description}
                           </div>
                         )}
