@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/PageHeader";
+import { PageTabs } from "@/components/PageTabs";
 import { Spinner } from "@/components/UiState";
 import { DirectionDialog } from "@/components/DirectionDialog";
 import { MultiSelectPopover, type MultiSelectOption } from "@/components/MultiSelectPopover";
@@ -285,6 +286,12 @@ export default function Plans() {
             </Button>
           ) : null
         }
+      />
+      <PageTabs
+        items={[
+          { label: "Квартальные планы", to: "/plans" },
+          { label: "Все задачи", to: "/tasks" },
+        ]}
       />
       <div className="p-4 sm:p-8">
         {/* Фильтры */}

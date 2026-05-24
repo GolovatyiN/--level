@@ -96,9 +96,17 @@ export function PrioritiesSummaryWidget({ quarter, direction }: Props = {}) {
     return map;
   }, [visible]);
 
-  const goToList = (_priority: TaskPriority) => {
-    // Глобальной страницы задач больше нет — ведём в матрицу планов.
-    navigate("/plans");
+  const goToList = (priority: TaskPriority) => {
+    // Глобальный реестр задач /tasks принимает фильтры через URL params.
+    const params = new URLSearchParams({ priority });
+    if (quarter && quarter !== "all") {
+      // На /tasks квартал — это Q1/Q2/Q3/Q4 префиксы; здесь же приходит
+      // полный label вида "Q3 2026". Берём префикс.
+      const prefix = quarter.match(/^(Q[1-4])/i)?.[1].toUpperCase();
+      if (prefix) params.set("quarter", prefix);
+    }
+    if (direction && direction !== "all") params.set("direction", direction);
+    navigate(`/tasks?${params.toString()}`);
   };
 
   return (

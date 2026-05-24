@@ -153,7 +153,7 @@ export function AppLayout() {
         {overdueCount > 0 && (
           <button
             type="button"
-            onClick={() => navigate("/plans")}
+            onClick={() => navigate("/tasks?overdue=1")}
             className="flex w-full animate-fade-in items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/10"
             title={`${overdueCount} задач просрочено`}
           >

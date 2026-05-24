@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import Plans from "./pages/Plans.tsx";
 import PlanDetail from "./pages/PlanDetail.tsx";
 import DepartmentDetail from "./pages/DepartmentDetail.tsx";
+import AllTasks from "./pages/AllTasks.tsx";
 import QuarterDetail from "./pages/QuarterDetail.tsx";
 import Archive from "./pages/Archive.tsx";
 import Management from "./pages/Management.tsx";
@@ -85,13 +86,14 @@ const App = () => (
                     вторична). См. DepartmentDetail. */}
                 <Route path="/departments/:id" element={<DepartmentDetail />} />
                 <Route path="/quarters/:id" element={<QuarterDetail />} />
-                {/* /tasks, /roadmap, /kanban, /table — старая страница
-                    «Планы и задачи» удалена; всё управление задачами
-                    переехало внутрь /plans/:id. */}
-                <Route path="/tasks" element={<Navigate to="/plans" replace />} />
-                <Route path="/roadmap" element={<Navigate to="/plans" replace />} />
-                <Route path="/kanban" element={<Navigate to="/plans" replace />} />
-                <Route path="/table" element={<Navigate to="/plans" replace />} />
+                {/* /tasks — глобальный реестр всех задач компании с
+                    фильтрами и поиском. Открывается из табов на /plans
+                    и по deep-link'ам с дашборда (?status=..., ?priority=...). */}
+                <Route path="/tasks" element={<AllTasks />} />
+                {/* /roadmap, /kanban, /table — старые алиасы. */}
+                <Route path="/roadmap" element={<Navigate to="/tasks" replace />} />
+                <Route path="/kanban" element={<Navigate to="/tasks" replace />} />
+                <Route path="/table" element={<Navigate to="/tasks" replace />} />
                 {/* /kpi — раздел «Цели» расформирован. Сохраняем редирект,
                     чтобы старые закладки и уведомления не падали в 404. */}
                 <Route path="/kpi" element={<Navigate to="/plans" replace />} />

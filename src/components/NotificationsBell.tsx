@@ -53,8 +53,8 @@ const ICONS: Record<NotificationType, React.ComponentType<{ className?: string }
 function entityLink(n: Notification): string | null {
   // task и kpi-страниц больше нет — нет смысла строить глубокие
   // линки на задачу/цель. Ведём пользователя в общий список планов.
-  if (n.entity_type === "task") return `/plans`;
-  if (n.entity_type === "kpi" || n.entity_type === "kpi_comment") return `/plans`;
+  if (n.entity_type === "task") return `/tasks`;
+  if (n.entity_type === "kpi" || n.entity_type === "kpi_comment") return `/tasks`;
   if (n.entity_type === "department_plan") return `/plans/${n.entity_id}`;
   return null;
 }

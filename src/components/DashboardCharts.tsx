@@ -202,7 +202,7 @@ export function DashboardCharts({ quarter, direction }: Props = {}) {
                 <li key={d.id}>
                   <button
                     type="button"
-                    onClick={() => navigate("/plans")}
+                    onClick={() => navigate(`/tasks?direction=${d.id}`)}
                     className="group block w-full text-left transition-opacity hover:opacity-90"
                   >
                     <div className="mb-1 flex items-center gap-2 text-xs">
